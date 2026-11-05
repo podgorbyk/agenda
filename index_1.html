@@ -1,0 +1,826 @@
+<!doctype html>
+<html lang="fr">
+<head>
+<meta charset="utf-8">
+<meta name="viewport" content="width=device-width, initial-scale=1, viewport-fit=cover">
+<title>Notre Agenda</title>
+<meta name="theme-color" content="#5b4bdb">
+<meta name="apple-mobile-web-app-capable" content="yes">
+<meta name="mobile-web-app-capable" content="yes">
+<meta name="apple-mobile-web-app-status-bar-style" content="default">
+<meta name="apple-mobile-web-app-title" content="Agenda">
+<link rel="apple-touch-icon" href="apple-touch-icon.png">
+<link rel="icon" type="image/png" href="icon-192.png">
+<link rel="manifest" href="manifest.webmanifest">
+<style>
+:root{
+  --bg:#f5f4f0;--card:#ffffff;--ink:#1c1c1f;--mute:#6d6c72;--line:#e5e3dd;--soft:#efede8;
+  --accent:#5b4bdb;--accent-ink:#ffffff;--danger:#d63a3a;--warn:#d98300;--ok:#1f9d55;
+  --shadow:0 1px 2px rgba(0,0,0,.05),0 4px 14px rgba(0,0,0,.05);
+}
+@media (prefers-color-scheme:dark){
+  :root{--bg:#121214;--card:#1c1c20;--ink:#ececf0;--mute:#9a99a2;--line:#2c2c32;--soft:#25252a;
+    --accent:#8b7ff0;--accent-ink:#121214;--danger:#f06464;--warn:#f0a63a;--ok:#4cc884;
+    --shadow:0 1px 2px rgba(0,0,0,.4);}
+}
+*{box-sizing:border-box;-webkit-tap-highlight-color:transparent}
+html,body{margin:0;background:var(--bg);color:var(--ink);font:16px/1.4 -apple-system,BlinkMacSystemFont,"SF Pro Text","Segoe UI",Roboto,sans-serif}
+body{min-height:100dvh;padding-bottom:calc(76px + env(safe-area-inset-bottom))}
+button,input,select,textarea{font:inherit;color:inherit}
+button{cursor:pointer}
+header.top{position:sticky;top:0;z-index:20;background:color-mix(in srgb,var(--bg) 88%,transparent);backdrop-filter:blur(12px);-webkit-backdrop-filter:blur(12px);
+  padding:calc(10px + env(safe-area-inset-top)) 16px 8px;display:flex;align-items:center;gap:10px}
+header.top h1{font-size:22px;margin:0;flex:1;letter-spacing:-.01em}
+.sync{font-size:12px;color:var(--mute);display:flex;align-items:center;gap:6px}
+.sync i{width:8px;height:8px;border-radius:50%;background:var(--ok);display:inline-block}
+.sync.off i{background:var(--mute)}
+.sync.demo i{background:var(--warn)}
+main{padding:0 16px 24px;max-width:720px;margin:0 auto}
+.banner{background:color-mix(in srgb,var(--warn) 15%,var(--card));border:1px solid color-mix(in srgb,var(--warn) 40%,transparent);border-radius:12px;padding:10px 12px;font-size:14px;margin:4px 0 12px}
+
+/* tab bar */
+nav.tabs{position:fixed;left:0;right:0;bottom:0;z-index:30;background:var(--card);border-top:1px solid var(--line);
+  display:flex;padding:6px 6px calc(6px + env(safe-area-inset-bottom))}
+nav.tabs button{flex:1;border:0;background:none;padding:6px 0;display:flex;flex-direction:column;align-items:center;gap:2px;font-size:11px;color:var(--mute)}
+nav.tabs button svg{width:24px;height:24px}
+nav.tabs button.on{color:var(--accent);font-weight:600}
+.fab{position:fixed;right:18px;bottom:calc(84px + env(safe-area-inset-bottom));z-index:31;width:58px;height:58px;border-radius:50%;border:0;
+  background:var(--accent);color:var(--accent-ink);font-size:32px;line-height:1;box-shadow:0 6px 20px rgba(91,75,219,.4)}
+
+/* filters */
+.chips{display:flex;gap:8px;flex-wrap:wrap}
+.chips.scroll{flex-wrap:nowrap;overflow-x:auto;scrollbar-width:none;margin:0 -16px;padding:2px 16px}
+.chips.scroll::-webkit-scrollbar{display:none}
+.chip{flex:none;border:1px solid var(--line);background:var(--card);border-radius:999px;padding:6px 12px;font-size:14px;display:inline-flex;align-items:center;gap:6px;white-space:nowrap}
+.chip i{width:10px;height:10px;border-radius:50%;background:var(--c,var(--mute))}
+.chip.on{background:var(--c,var(--accent));border-color:var(--c,var(--accent));color:#fff}
+.chip.on i{background:#fff}
+.filters{display:grid;gap:10px;margin:4px 0 14px}
+.frow{display:flex;gap:8px}
+.frow > *{flex:1;min-width:0}
+.seg{display:flex;background:var(--soft);border-radius:10px;padding:3px}
+.seg button{flex:1;border:0;background:none;border-radius:8px;padding:6px 4px;font-size:13px;color:var(--mute)}
+.seg button.on{background:var(--card);color:var(--ink);font-weight:600;box-shadow:var(--shadow)}
+select,input[type=text],input[type=search],input[type=email],input[type=password],input[type=date],input[type=time],textarea{
+  width:100%;border:1px solid var(--line);background:var(--card);border-radius:10px;padding:9px 10px;font-size:16px;min-height:42px}
+input[type=date],input[type=time]{-webkit-appearance:none;appearance:none}
+textarea{min-height:70px;resize:vertical}
+
+/* list */
+.group{margin:16px 0 6px;font-size:13px;font-weight:700;color:var(--mute);text-transform:uppercase;letter-spacing:.04em;display:flex;justify-content:space-between}
+.group.late{color:var(--danger)}
+.card{background:var(--card);border-radius:14px;box-shadow:var(--shadow);overflow:hidden}
+.row{display:flex;align-items:flex-start;gap:10px;padding:11px 12px;border-bottom:1px solid var(--line);position:relative}
+.row:last-child{border-bottom:0}
+.row::before{content:"";position:absolute;left:0;top:10px;bottom:10px;width:3px;border-radius:2px;background:var(--c,transparent)}
+.check{flex:none;width:26px;height:26px;border-radius:50%;border:2px solid var(--line);background:none;display:grid;place-items:center;color:transparent;font-size:14px;margin-top:1px;padding:0}
+.check.st-doing{border-color:var(--warn);background:color-mix(in srgb,var(--warn) 18%,transparent)}
+.check.st-done{border-color:var(--ok);background:var(--ok);color:#fff}
+.body{flex:1;min-width:0}
+.title{font-weight:500;word-wrap:break-word}
+.done .title{text-decoration:line-through;color:var(--mute)}
+.meta{display:flex;flex-wrap:wrap;gap:6px 10px;font-size:13px;color:var(--mute);margin-top:3px;align-items:center}
+.who{display:inline-flex;align-items:center;gap:4px}
+.who::before{content:"";width:8px;height:8px;border-radius:50%;background:var(--c)}
+.tag{background:var(--soft);border-radius:6px;padding:1px 7px}
+.late-t{color:var(--danger);font-weight:600}
+.prio{font-size:12px;font-weight:700;border-radius:5px;padding:0 5px;margin-right:4px;vertical-align:1px}
+.prio.p1{background:color-mix(in srgb,var(--warn) 22%,transparent);color:var(--warn)}
+.prio.p2{background:color-mix(in srgb,var(--danger) 20%,transparent);color:var(--danger)}
+.empty{color:var(--mute);text-align:center;padding:30px 10px;font-size:15px}
+.quick{display:flex;gap:8px;margin-bottom:12px}
+.quick input{flex:1}
+.btn{border:1px solid var(--line);background:var(--card);border-radius:10px;padding:9px 14px;font-weight:600;min-height:42px}
+.btn.primary{background:var(--accent);border-color:var(--accent);color:var(--accent-ink)}
+.btn.danger{color:var(--danger)}
+.btn.small{padding:5px 10px;min-height:0;font-size:13px}
+
+/* agenda */
+.agbar{display:flex;align-items:center;gap:8px;margin:4px 0 10px}
+.agbar .lbl{flex:1;text-align:center;font-weight:700}
+.navb{width:40px;height:40px;border-radius:10px;border:1px solid var(--line);background:var(--card);font-size:20px}
+.day{margin-bottom:10px}
+.dayh{display:flex;align-items:center;gap:8px;padding:8px 2px 6px;font-weight:700;font-size:15px}
+.dayh.today{color:var(--accent)}
+.dayh .add{margin-left:auto;border:0;background:var(--soft);border-radius:8px;width:30px;height:28px;font-size:18px;color:var(--mute)}
+.conf{background:color-mix(in srgb,var(--danger) 13%,var(--card));color:var(--danger);border-radius:8px;padding:6px 10px;font-size:13px;font-weight:600;margin-bottom:6px}
+.time{flex:none;width:62px;font-size:13px;font-weight:600;color:var(--mute);padding-top:2px;font-variant-numeric:tabular-nums}
+.row.isconf .time{color:var(--danger)}
+.noday{color:var(--mute);font-size:14px;padding:0 2px 6px}
+.month{display:grid;grid-template-columns:repeat(7,minmax(0,1fr));gap:3px;margin-bottom:12px}
+.cell{min-width:0}
+.month .dn{font-size:11px;color:var(--mute);text-align:center;padding:4px 0;font-weight:600}
+.cell{aspect-ratio:1/1.05;border:0;border-radius:9px;background:var(--card);padding:4px 2px;display:flex;flex-direction:column;align-items:center;gap:3px;font-size:14px;box-shadow:var(--shadow)}
+.cell.out{opacity:.4}
+.cell.today .n{background:var(--accent);color:var(--accent-ink);border-radius:50%;width:24px;height:24px;display:grid;place-items:center}
+.cell.sel{outline:2px solid var(--accent)}
+.cell.conf{box-shadow:inset 0 0 0 2px var(--danger)}
+.dots{display:flex;gap:2px;flex-wrap:wrap;justify-content:center;max-width:30px}
+.dots i{width:6px;height:6px;border-radius:50%;background:var(--c)}
+.toggle{display:flex;align-items:center;gap:8px;font-size:14px;color:var(--mute)}
+.toggle input{width:18px;height:18px}
+
+/* settings */
+.sect{margin:18px 0}
+.sect h2{font-size:15px;margin:0 0 8px;color:var(--mute);text-transform:uppercase;letter-spacing:.04em}
+.sect .card{padding:12px;display:grid;gap:10px}
+.prow{display:flex;gap:8px;align-items:center}
+.prow input[type=color]{width:44px;height:42px;border:1px solid var(--line);border-radius:10px;background:var(--card);padding:3px}
+.catchip{display:inline-flex;align-items:center;gap:6px;background:var(--soft);border-radius:999px;padding:5px 6px 5px 12px;font-size:14px}
+.catchip button{border:0;background:var(--line);border-radius:50%;width:22px;height:22px;line-height:1;padding:0;color:var(--mute)}
+.small{font-size:13px;color:var(--mute)}
+
+/* editor */
+dialog{border:0;padding:0;background:var(--card);color:var(--ink);width:100%;max-width:560px;border-radius:18px 18px 0 0;margin:auto auto 0;max-height:92dvh}
+dialog::backdrop{background:rgba(0,0,0,.4)}
+@media (min-width:640px){dialog{border-radius:18px;margin:auto}}
+#edForm{padding:14px 16px calc(16px + env(safe-area-inset-bottom));display:grid;gap:12px}
+.sheet-head{display:flex;align-items:center}
+.sheet-head h2{flex:1;margin:0;font-size:18px}
+.x{border:0;background:var(--soft);border-radius:50%;width:32px;height:32px;font-size:18px}
+.grid2{display:grid;grid-template-columns:minmax(0,1fr) minmax(0,1fr);gap:10px}
+.grid2 > *{min-width:0}
+.grid2 input,.grid2 select{min-width:0;max-width:100%}
+dialog{overflow-x:hidden;max-width:min(560px,100vw)}
+.grid2 label,.lab{font-size:13px;color:var(--mute);display:grid;gap:4px}
+.actions{display:flex;gap:8px;flex-wrap:wrap}
+.actions .btn{flex:1 1 auto}
+.actions .primary{flex:1 1 100%;order:9}
+#edForm[data-type=shop] :is(.f-date,.f-time,.f-end,.f-prio,.f-status,.f-person){display:none}
+#edForm[data-type=task] .f-end,#edForm[data-type=task] .f-qty{display:none}
+#edForm[data-type=event] :is(.f-prio,.f-status,.f-qty){display:none}
+#edForm:not([data-type=shop]) .f-qty{display:none}
+#edForm:not([data-type=event]) :is(.f-enddate,.f-repeat,.f-until){display:none}
+#edForm.norepeat .f-until{display:none}
+.rep{font-size:12px}
+
+/* login */
+.login{min-height:80dvh;display:grid;place-items:center}
+.login .card{padding:24px 20px;width:100%;max-width:380px;display:grid;gap:12px}
+.login h2{margin:0;font-size:24px}
+.err{color:var(--danger);font-size:14px;min-height:1em}
+.toast{position:fixed;left:50%;transform:translateX(-50%);bottom:calc(150px + env(safe-area-inset-bottom));background:var(--ink);color:var(--bg);padding:10px 16px;border-radius:12px;font-size:14px;z-index:100;max-width:90vw}
+</style>
+</head>
+<body>
+<header class="top">
+  <h1 id="hTitle">Notre Agenda</h1>
+  <span class="sync" id="sync"><i></i><span></span></span>
+</header>
+<main id="main"><div class="empty">Chargement…</div></main>
+<button class="fab" id="fab" aria-label="Ajouter" hidden>+</button>
+<nav class="tabs" id="tabs" hidden>
+  <button data-view="tasks"><svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round"><path d="M9 6h11M9 12h11M9 18h11"/><path d="M3.5 6l1 1 2-2M3.5 12l1 1 2-2M3.5 18l1 1 2-2"/></svg>Tâches</button>
+  <button data-view="agenda"><svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round"><rect x="3" y="5" width="18" height="16" rx="2"/><path d="M3 10h18M8 3v4M16 3v4"/></svg>Agenda</button>
+  <button data-view="shop"><svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round"><path d="M3 4h2l2.4 11.2a2 2 0 0 0 2 1.6h7.7a2 2 0 0 0 2-1.5L21 8H6"/><circle cx="10" cy="20" r="1.3"/><circle cx="17" cy="20" r="1.3"/></svg>Courses</button>
+  <button data-view="settings"><svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round"><circle cx="12" cy="12" r="3"/><path d="M19.4 15a1.7 1.7 0 0 0 .3 1.8l.1.1a2 2 0 1 1-2.8 2.8l-.1-.1a1.7 1.7 0 0 0-1.8-.3 1.7 1.7 0 0 0-1 1.5V21a2 2 0 1 1-4 0v-.1a1.7 1.7 0 0 0-1.1-1.5 1.7 1.7 0 0 0-1.8.3l-.1.1a2 2 0 1 1-2.8-2.8l.1-.1a1.7 1.7 0 0 0 .3-1.8 1.7 1.7 0 0 0-1.5-1H3a2 2 0 1 1 0-4h.1a1.7 1.7 0 0 0 1.5-1.1 1.7 1.7 0 0 0-.3-1.8l-.1-.1a2 2 0 1 1 2.8-2.8l.1.1a1.7 1.7 0 0 0 1.8.3H9a1.7 1.7 0 0 0 1-1.5V3a2 2 0 1 1 4 0v.1a1.7 1.7 0 0 0 1 1.5 1.7 1.7 0 0 0 1.8-.3l.1-.1a2 2 0 1 1 2.8 2.8l-.1.1a1.7 1.7 0 0 0-.3 1.8V9a1.7 1.7 0 0 0 1.5 1H21a2 2 0 1 1 0 4h-.1a1.7 1.7 0 0 0-1.5 1z"/></svg>Réglages</button>
+</nav>
+
+<dialog id="ed">
+  <form id="edForm" data-type="task" autocomplete="off">
+    <div class="sheet-head"><h2 id="edTitle">Nouveau</h2><button type="button" class="x" id="edClose" aria-label="Fermer">×</button></div>
+    <div class="seg" id="edType">
+      <button type="button" data-type="task">Tâche</button>
+      <button type="button" data-type="event">Événement</button>
+      <button type="button" data-type="shop">Course</button>
+    </div>
+    <input type="text" name="title" placeholder="Quoi ?" required>
+    <div class="lab f-person">Pour qui<div class="chips" id="edPerson"></div></div>
+    <div class="grid2">
+      <label class="f-cat">Catégorie<select name="category"></select></label>
+      <label class="f-qty">Quantité<input type="text" name="qty" placeholder="ex. 2 kg"></label>
+      <label class="f-date">Date<input type="date" name="date"></label>
+      <label class="f-time">Heure<input type="time" name="time"></label>
+      <label class="f-end">Fin<input type="time" name="endTime"></label>
+      <label class="f-enddate">Jusqu'au (plusieurs jours)<input type="date" name="endDate"></label>
+      <label class="f-repeat">Répéter<select name="repeat"><option value="">Jamais</option><option value="daily:1">Chaque jour</option><option value="weekly:1">Chaque semaine</option><option value="weekly:2">Toutes les 2 semaines</option><option value="monthly:1">Chaque mois</option><option value="yearly:1">Chaque année</option></select></label>
+      <label class="f-until">Fin de la répétition<input type="date" name="until"></label>
+      <label class="f-prio">Priorité<select name="priority"><option value="0">Normale</option><option value="1">Haute</option><option value="2">Urgente</option></select></label>
+      <label class="f-status">Statut<select name="status"><option value="todo">À faire</option><option value="doing">En cours</option><option value="done">Fait</option></select></label>
+    </div>
+    <textarea name="notes" placeholder="Notes (adresse, détails…)"></textarea>
+    <div class="actions">
+      <button type="button" class="btn danger" id="edDel">Supprimer</button>
+      <button type="button" class="btn" id="edDup">Dupliquer</button>
+      <button type="button" class="btn" id="edSkip">Retirer ce jour</button>
+      <button type="submit" class="btn primary">Enregistrer</button>
+    </div>
+  </form>
+</dialog>
+
+<script type="module">
+/* =========================================================
+   CONFIGURATION — colle ici la config de TON projet Firebase
+   (Firebase > Paramètres du projet > Vos applications > Config).
+   Tant que apiKey est vide, l'appli tourne en MODE DÉMO
+   (données gardées uniquement sur cet appareil).
+   ========================================================= */
+const FIREBASE_CONFIG = {
+  apiKey: "AIzaSyBxwA5rcBIQeSdlRTNPM92xTrGEdRxuA8c",
+  authDomain: "agenda-famille-d6eaf.firebaseapp.com",
+  projectId: "agenda-famille-d6eaf",
+  storageBucket: "agenda-famille-d6eaf.firebasestorage.app",
+  messagingSenderId: "851152496646",
+  appId: "1:851152496646:web:9cac6e4dd25a80be7e3b87"
+};
+const FB_VERSION = "10.12.2";
+const DEMO = !FIREBASE_CONFIG.apiKey;
+
+const DEFAULT_SETTINGS = {
+  people: [
+    { id: "p1", name: "Kevin", color: "#3b82f6" },
+    { id: "p2", name: "Emeline", color: "#e0457b" },
+    { id: "both", name: "Nous deux", color: "#8b5cf6" },
+    { id: "kids", name: "Enfants", color: "#f59e0b" }
+  ],
+  categories: ["Presta / MDR", "Concerts & répètes", "Maison", "Enfants", "Admin", "Rendez-vous", "Loisirs", "Anniversaires", "Animaux", "Fériés & congés"],
+  shopCategories: ["Fruits & légumes", "Frais", "Boucherie", "Épicerie", "Boissons", "Surgelés", "Maison & hygiène", "Autre"]
+};
+
+/* ---------- utilitaires ---------- */
+const $ = (s, el = document) => el.querySelector(s);
+const esc = s => String(s ?? "").replace(/[&<>"']/g, c => ({ "&": "&amp;", "<": "&lt;", ">": "&gt;", '"': "&quot;", "'": "&#39;" }[c]));
+const pad = n => String(n).padStart(2, "0");
+const ymd = d => `${d.getFullYear()}-${pad(d.getMonth() + 1)}-${pad(d.getDate())}`;
+const parseYmd = s => { const [y, m, d] = s.split("-").map(Number); return new Date(y, m - 1, d); };
+const addDays = (d, n) => { const x = new Date(d); x.setDate(x.getDate() + n); return x; };
+const startOfWeek = d => { const x = new Date(d.getFullYear(), d.getMonth(), d.getDate()); return addDays(x, -((x.getDay() + 6) % 7)); };
+const todayStr = () => ymd(new Date());
+const uid = () => Date.now().toString(36) + Math.random().toString(36).slice(2, 8);
+const clone = o => JSON.parse(JSON.stringify(o));
+const fmtDay = (s, opt = { weekday: "short", day: "numeric", month: "short" }) => parseYmd(s).toLocaleDateString("fr-BE", opt);
+const toMin = t => { const [h, m] = t.split(":").map(Number); return h * 60 + m; };
+const ls = {
+  get(k, d) { try { const v = localStorage.getItem(k); return v == null ? d : JSON.parse(v); } catch { return d; } },
+  set(k, v) { try { localStorage.setItem(k, JSON.stringify(v)); } catch {} }
+};
+function toast(msg, ms = 2600) {
+  const t = document.createElement("div"); t.className = "toast"; t.textContent = msg;
+  document.body.appendChild(t); setTimeout(() => t.remove(), ms);
+}
+
+/* ---------- état ---------- */
+const state = {
+  items: [], settings: clone(DEFAULT_SETTINGS), user: null,
+  view: ls.get("na.view", "tasks"),
+  me: ls.get("na.me", "p1"),
+  filters: Object.assign({ persons: [], category: "", status: "open", sort: "due", q: "" }, ls.get("na.filters", {})),
+  agenda: { mode: ls.get("na.agmode", "week"), anchor: new Date(), sel: todayStr(), withTasks: ls.get("na.agtasks", true) }
+};
+state.filters.q = "";
+let store = null;
+
+const P = id => state.settings.people.find(p => p.id === id) || { name: "—", color: "#999" };
+const saveFilters = () => ls.set("na.filters", state.filters);
+
+/* ---------- stockage : démo (local) ---------- */
+function createLocalStore() {
+  const KEY = "na.demo";
+  let data = ls.get(KEY, null);
+  if (!data) data = { items: demoItems(), settings: clone(DEFAULT_SETTINGS) };
+  const iL = new Set(), sL = new Set();
+  const emit = () => { ls.set(KEY, data); iL.forEach(f => f(data.items.slice())); sL.forEach(f => f(data.settings)); };
+  const now = () => Date.now();
+  return {
+    mode: "demo",
+    onItems(cb) { iL.add(cb); cb(data.items.slice()); },
+    onSettings(cb) { sL.add(cb); cb(data.settings); },
+    async add(it) { data.items.push({ ...it, id: uid(), createdAt: now(), updatedAt: now() }); emit(); },
+    async update(id, p) { const i = data.items.find(x => x.id === id); if (i) Object.assign(i, p, { updatedAt: now() }); emit(); },
+    async remove(id) { data.items = data.items.filter(x => x.id !== id); emit(); },
+    async removeMany(ids) { const s = new Set(ids); data.items = data.items.filter(x => !s.has(x.id)); emit(); },
+    async saveSettings(s) { data.settings = s; emit(); },
+    async importItems(items) { items.forEach(i => data.items.push({ ...i, id: uid() })); emit(); }
+  };
+}
+function demoItems() {
+  const t = new Date(), d = n => ymd(addDays(t, n)), now = Date.now();
+  const mk = o => ({ id: uid(), notes: "", qty: "", time: "", endTime: "", date: "", priority: 0, status: "todo", createdAt: now, updatedAt: now, ...o });
+  return [
+    mk({ type: "task", title: "Envoyer le devis pour le mariage de samedi", person: "p1", category: "Presta / MDR", date: d(-1), priority: 2 }),
+    mk({ type: "task", title: "Réserver la salle de répète", person: "p2", category: "Concerts & répètes", date: d(0), priority: 1, status: "doing" }),
+    mk({ type: "task", title: "Inscrire les enfants au stage de Carnaval", person: "both", category: "Enfants", date: d(3) }),
+    mk({ type: "task", title: "Changer le filtre de la hotte", person: "p1", category: "Maison" }),
+    mk({ type: "task", title: "Payer la facture d'électricité", person: "p2", category: "Admin", date: d(6), status: "done" }),
+    mk({ type: "event", title: "Montage lumière – salle des fêtes", person: "p1", category: "Presta / MDR", date: d(1), time: "14:00", endTime: "23:00" }),
+    mk({ type: "event", title: "Concert percussions", person: "p2", category: "Concerts & répètes", date: d(1), time: "20:00", endTime: "22:30", notes: "Qui garde les enfants ?" }),
+    mk({ type: "event", title: "Dentiste", person: "kids", category: "Rendez-vous", date: d(2), time: "16:30", endTime: "17:00" }),
+    mk({ type: "event", title: "Resto en amoureux", person: "both", category: "Loisirs", date: d(5), time: "19:30" }),
+    mk({ type: "shop", title: "Pommes", category: "Fruits & légumes", qty: "1 kg", person: "both" }),
+    mk({ type: "shop", title: "Lait", category: "Frais", qty: "2", person: "both" }),
+    mk({ type: "shop", title: "Pâtes", category: "Épicerie", person: "both" }),
+    mk({ type: "shop", title: "Produit vaisselle", category: "Maison & hygiène", person: "both", status: "done" })
+  ];
+}
+
+/* ---------- stockage : Firebase (cloud partagé) ---------- */
+async function loadFirebase() {
+  const base = `https://www.gstatic.com/firebasejs/${FB_VERSION}/`;
+  const [appM, authM, fsM] = await Promise.all([
+    import(base + "firebase-app.js"), import(base + "firebase-auth.js"), import(base + "firebase-firestore.js")
+  ]);
+  const app = appM.initializeApp(FIREBASE_CONFIG);
+  let auth;
+  try { auth = authM.initializeAuth(app, { persistence: [authM.indexedDBLocalPersistence, authM.browserLocalPersistence] }); }
+  catch { auth = authM.getAuth(app); }
+  let db;
+  try { db = fsM.initializeFirestore(app, { localCache: fsM.persistentLocalCache({ tabManager: fsM.persistentMultipleTabManager() }) }); }
+  catch { db = fsM.getFirestore(app); }
+  return { auth, a: authM, db, f: fsM };
+}
+function createCloudStore(fb, user) {
+  const { db, f } = fb;
+  const col = f.collection(db, "items"), setRef = f.doc(db, "meta", "settings");
+  const now = () => Date.now();
+  return {
+    mode: "cloud",
+    onItems(cb, onErr) { return f.onSnapshot(col, { includeMetadataChanges: true }, snap => { setPending(snap.metadata.hasPendingWrites, snap.metadata.fromCache); cb(snap.docs.map(d => ({ id: d.id, ...d.data() }))); }, onErr); },
+    onSettings(cb, onErr) { return f.onSnapshot(setRef, s => cb(s.exists() ? { ...clone(DEFAULT_SETTINGS), ...s.data() } : clone(DEFAULT_SETTINGS)), onErr); },
+    add(it) { return f.addDoc(col, { ...it, createdAt: now(), updatedAt: now(), by: user.email }); },
+    update(id, p) { return f.updateDoc(f.doc(db, "items", id), { ...p, updatedAt: now(), by: user.email }); },
+    remove(id) { return f.deleteDoc(f.doc(db, "items", id)); },
+    async removeMany(ids) { for (let i = 0; i < ids.length; i += 400) { const b = f.writeBatch(db); ids.slice(i, i + 400).forEach(id => b.delete(f.doc(db, "items", id))); await b.commit(); } },
+    saveSettings(s) { return f.setDoc(setRef, s); },
+    async importItems(items) { for (let i = 0; i < items.length; i += 400) { const b = f.writeBatch(db); items.slice(i, i + 400).forEach(it => { const { id, ...rest } = it; b.set(f.doc(col), rest); }); await b.commit(); } }
+  };
+}
+const fail = e => { console.error(e); toast(e?.code === "permission-denied" ? "Accès refusé : ce compte n'est pas autorisé." : "Erreur : " + (e?.message || e)); };
+
+/* ---------- indicateur de synchro ---------- */
+let pending = false, cached = false;
+function setPending(p, c) { pending = p; cached = c; paintSync(); }
+function paintSync() {
+  const el = $("#sync"), txt = el.querySelector("span");
+  el.className = "sync";
+  if (DEMO) { el.classList.add("demo"); txt.textContent = "Démo"; return; }
+  if (!state.user) { txt.textContent = ""; el.classList.add("off"); return; }
+  if (!navigator.onLine) { el.classList.add("off"); txt.textContent = "Hors ligne"; return; }
+  txt.textContent = pending ? "Envoi…" : "Synchronisé";
+}
+addEventListener("online", paintSync); addEventListener("offline", paintSync);
+
+/* ---------- démarrage ---------- */
+let fbRef = null;
+async function boot() {
+  paintSync();
+  if (DEMO) { store = createLocalStore(); startApp(); return; }
+  try { fbRef = await loadFirebase(); }
+  catch (e) { $("#main").innerHTML = `<div class="empty">Impossible de charger Firebase. Vérifie ta connexion.<br><small>${esc(e.message)}</small></div>`; return; }
+  fbRef.a.onAuthStateChanged(fbRef.auth, user => {
+    state.user = user;
+    if (!user) { renderLogin(); return; }
+    store = createCloudStore(fbRef, user);
+    startApp();
+  });
+}
+let unsub = [];
+function startApp() {
+  unsub.forEach(u => typeof u === "function" && u()); unsub = [];
+  $("#tabs").hidden = false;
+  const onErr = e => {
+    if (e?.code === "permission-denied") renderDenied(); else fail(e);
+  };
+  unsub.push(store.onSettings(s => { state.settings = s; if (state.view !== "settings") render(); }, onErr));
+  unsub.push(store.onItems(items => { state.items = items; if (state.view !== "settings") render(); }, onErr));
+  render(); paintSync();
+}
+
+/* ---------- connexion (email + mot de passe) ---------- */
+function renderLogin() {
+  $("#tabs").hidden = true; $("#fab").hidden = true; paintSync();
+  $("#main").innerHTML = `
+  <div class="login"><form class="card" id="loginForm">
+    <h2>Notre Agenda</h2>
+    <div class="small">Connecte-toi avec ton email et ton mot de passe.</div>
+    <input type="email" name="email" placeholder="Email" autocomplete="username" required value="${esc(ls.get("na.lastEmail", ""))}">
+    <input type="password" name="pw" placeholder="Mot de passe" autocomplete="current-password" required>
+    <div class="err" id="loginErr"></div>
+    <button class="btn primary" type="submit">Se connecter</button>
+    <button class="btn" type="button" id="forgot">Mot de passe oublié</button>
+  </form></div>`;
+  const form = $("#loginForm");
+  form.onsubmit = async e => {
+    e.preventDefault();
+    const fd = new FormData(form);
+    $("#loginErr").textContent = "";
+    try { ls.set("na.lastEmail", fd.get("email").trim()); await fbRef.a.signInWithEmailAndPassword(fbRef.auth, fd.get("email").trim(), fd.get("pw")); }
+    catch (err) {
+      const m = { "auth/invalid-credential": "Email ou mot de passe incorrect.", "auth/wrong-password": "Mot de passe incorrect.",
+        "auth/user-not-found": "Compte inconnu.", "auth/too-many-requests": "Trop d'essais, réessaie dans quelques minutes.",
+        "auth/network-request-failed": "Pas de connexion internet." };
+      $("#loginErr").textContent = m[err.code] || err.message;
+    }
+  };
+  $("#forgot").onclick = async () => {
+    const email = form.email.value.trim();
+    if (!email) { $("#loginErr").textContent = "Entre d'abord ton email au-dessus."; return; }
+    try { await fbRef.a.sendPasswordResetEmail(fbRef.auth, email); toast("Email de réinitialisation envoyé (regarde aussi les spams)."); }
+    catch (err) { $("#loginErr").textContent = err.message; }
+  };
+}
+function renderDenied() {
+  $("#tabs").hidden = true; $("#fab").hidden = true;
+  $("#main").innerHTML = `<div class="login"><div class="card"><h2>Accès refusé</h2>
+    <div class="small">Le compte <b>${esc(state.user?.email)}</b> n'est pas dans la liste autorisée des règles Firestore.</div>
+    <button class="btn" id="out">Se déconnecter</button></div></div>`;
+  $("#out").onclick = () => fbRef.a.signOut(fbRef.auth);
+}
+
+/* ---------- filtres ---------- */
+function matchPerson(i) {
+  const sel = state.filters.persons;
+  if (!sel.length) return true;
+  return sel.includes(i.person) || (i.person === "both" && (sel.includes("p1") || sel.includes("p2")));
+}
+function matchCommon(i) {
+  const f = state.filters;
+  if (!matchPerson(i)) return false;
+  if (f.category && i.category !== f.category) return false;
+  if (f.q) { const q = f.q.toLowerCase(); if (!(`${i.title} ${i.notes || ""}`.toLowerCase().includes(q))) return false; }
+  return true;
+}
+function personChips() {
+  return `<div class="chips scroll">${state.settings.people.map(p =>
+    `<button class="chip ${state.filters.persons.includes(p.id) ? "on" : ""}" data-act="fperson" data-id="${p.id}" style="--c:${esc(p.color)}"><i></i>${esc(p.name)}</button>`).join("")}</div>`;
+}
+function catSelect() {
+  return `<select data-f="category"><option value="">Toutes catégories</option>${state.settings.categories.map(c =>
+    `<option ${state.filters.category === c ? "selected" : ""}>${esc(c)}</option>`).join("")}</select>`;
+}
+
+/* ---------- rendu ---------- */
+function render() {
+  const act = document.activeElement, keepId = act?.id, pos = act?.selectionStart;
+  document.querySelectorAll("#tabs button").forEach(b => b.classList.toggle("on", b.dataset.view === state.view));
+  $("#fab").hidden = state.view === "settings";
+  const titles = { tasks: "Tâches", agenda: "Agenda", shop: "Courses", settings: "Réglages" };
+  $("#hTitle").textContent = titles[state.view];
+  const banner = DEMO ? `<div class="banner">Mode démo : les données restent sur cet appareil. Configure Firebase (voir le guide) pour partager avec ta femme.</div>` : "";
+  const v = { tasks: renderTasks, agenda: renderAgenda, shop: renderShop, settings: renderSettings }[state.view] || renderTasks;
+  $("#main").innerHTML = banner + v();
+  if (keepId && document.getElementById(keepId)) {
+    const el = document.getElementById(keepId); el.focus();
+    try { if (pos != null) el.setSelectionRange(pos, pos); } catch {}
+  }
+}
+
+function rowHTML(i, opts = {}) {
+  const p = P(i.person), today = todayStr();
+  const late = i.type === "task" && i.status !== "done" && i.date && i.date < today;
+  const check = i.type === "event" ? "" :
+    `<button class="check st-${i.status || "todo"}" data-act="toggle" data-id="${i.id}" aria-label="Cocher">${i.status === "done" ? "✓" : ""}</button>`;
+  const time = opts.time ? `<div class="time">${i.time ? esc(i.time) + (i.endTime ? `<br>${esc(i.endTime)}` : "") : "Journée"}</div>` : "";
+  const prio = i.type === "task" && +i.priority > 0 && i.status !== "done" ? `<span class="prio p${+i.priority}">${+i.priority === 2 ? "URGENT" : "!"}</span>` : "";
+  const meta = [];
+  if (i.type !== "shop") meta.push(`<span class="who" style="--c:${esc(p.color)}">${esc(p.name)}</span>`);
+  if (i.category && !opts.noCat) meta.push(`<span class="tag">${esc(i.category)}</span>`);
+  if (i.qty) meta.push(`<span>${esc(i.qty)}</span>`);
+  if (i.date && !opts.time) meta.push(`<span class="${late ? "late-t" : ""}">${i.date === today ? "Aujourd'hui" : esc(fmtDay(i.date))}${i.time ? " · " + esc(i.time) : ""}</span>`);
+  if (i.type === "event" && i.repeat?.freq) meta.push(`<span class="rep" title="Répétition">↻ ${esc(REPEAT_LABEL[i.repeat.freq + ":" + (i.repeat.interval || 1)] || "Répété")}</span>`);
+  if (i.type === "event" && i.endDate && i.endDate > i.date) meta.push(`<span>→ ${esc(fmtDay(i.endDate))}</span>`);
+  if (i.status === "doing") meta.push(`<span style="color:var(--warn);font-weight:600">En cours</span>`);
+  if (i.notes) meta.push(`<span title="Notes">📝</span>`);
+  return `<div class="row ${i.status === "done" ? "done" : ""} ${opts.conf ? "isconf" : ""}" style="--c:${i.type === "shop" ? "transparent" : esc(p.color)}">
+    ${time}${check}
+    <div class="body" data-act="edit" data-id="${i.id}"${opts.occ ? ` data-d="${opts.occ}"` : ""}>
+      <div class="title">${prio}${esc(i.title)}</div>
+      ${meta.length ? `<div class="meta">${meta.join("")}</div>` : ""}
+    </div></div>`;
+}
+
+/* --- Tâches --- */
+function renderTasks() {
+  const f = state.filters, today = todayStr(), tom = ymd(addDays(new Date(), 1)), wk = ymd(addDays(new Date(), 7));
+  let list = state.items.filter(i => i.type === "task" && matchCommon(i));
+  if (f.status === "open") list = list.filter(i => i.status !== "done");
+  else if (f.status !== "all") list = list.filter(i => i.status === f.status);
+  const byDue = (a, b) => (a.date || "9999") .localeCompare(b.date || "9999") || (a.time || "").localeCompare(b.time || "") || (+b.priority || 0) - (+a.priority || 0);
+  const sorters = {
+    due: byDue,
+    prio: (a, b) => (+b.priority || 0) - (+a.priority || 0) || byDue(a, b),
+    recent: (a, b) => (b.updatedAt || 0) - (a.updatedAt || 0),
+    person: (a, b) => P(a.person).name.localeCompare(P(b.person).name) || byDue(a, b),
+    cat: (a, b) => (a.category || "").localeCompare(b.category || "") || byDue(a, b)
+  };
+  list.sort(sorters[f.sort] || byDue);
+
+  let groups;
+  if (f.sort === "due") {
+    const order = ["En retard", "Aujourd'hui", "Demain", "Cette semaine", "Plus tard", "Sans date", "Fait"];
+    const key = i => i.status === "done" ? "Fait" : !i.date ? "Sans date" : i.date < today ? "En retard" : i.date === today ? "Aujourd'hui" : i.date === tom ? "Demain" : i.date < wk ? "Cette semaine" : "Plus tard";
+    groups = order.map(k => [k, list.filter(i => key(i) === k)]).filter(g => g[1].length);
+  } else if (f.sort === "person" || f.sort === "cat") {
+    const m = new Map();
+    list.forEach(i => { const k = f.sort === "person" ? P(i.person).name : (i.category || "Sans catégorie"); if (!m.has(k)) m.set(k, []); m.get(k).push(i); });
+    groups = [...m];
+  } else groups = [["", list]];
+
+  const seg = (v, l) => `<button class="${f.status === v ? "on" : ""}" data-act="fstatus" data-v="${v}">${l}</button>`;
+  return `
+  <div class="filters">
+    <div class="quick"><input type="text" id="quickTask" placeholder="Ajout rapide d'une tâche…" enterkeyhint="done"><button class="btn primary" data-act="quickTask">OK</button></div>
+    ${personChips()}
+    <div class="seg">${seg("open", "À faire")}${seg("doing", "En cours")}${seg("done", "Fait")}${seg("all", "Tout")}</div>
+    <div class="frow">${catSelect()}
+      <select data-f="sort">${[["due", "Tri : échéance"], ["prio", "Tri : priorité"], ["person", "Tri : personne"], ["cat", "Tri : catégorie"], ["recent", "Tri : récent"]]
+        .map(([v, l]) => `<option value="${v}" ${f.sort === v ? "selected" : ""}>${l}</option>`).join("")}</select></div>
+    <input type="search" id="search" data-f="q" placeholder="Rechercher…" value="${esc(f.q)}">
+  </div>
+  ${groups.length ? groups.map(([k, arr]) => `${k ? `<div class="group ${k === "En retard" ? "late" : ""}"><span>${esc(k)}</span><span>${arr.length}</span></div>` : ""}
+    <div class="card">${arr.map(i => rowHTML(i, { noCat: f.sort === "cat" })).join("")}</div>`).join("")
+    : `<div class="empty">Rien ici 🎉<br><small>Ajoute une tâche avec le bouton +</small></div>`}`;
+}
+
+/* --- Agenda --- */
+function rangeOf(e) {
+  if (!e.time) return [0, 1440];
+  const s = toMin(e.time); let en = e.endTime ? toMin(e.endTime) : s + 60;
+  if (en <= s) en = 1440;
+  return [s, en];
+}
+const REPEAT_LABEL = { "daily:1": "chaque jour", "weekly:1": "chaque semaine", "weekly:2": "toutes les 2 sem.", "monthly:1": "chaque mois", "yearly:1": "chaque année" };
+function occursOn(i, ds) {
+  if (!i.date) return false;
+  const r = i.repeat;
+  if (!r || !r.freq) return ds >= i.date && ds <= (i.endDate && i.endDate > i.date ? i.endDate : i.date);
+  if (ds < i.date || (r.until && ds > r.until) || (i.exdates && i.exdates.includes(ds))) return false;
+  const a = parseYmd(i.date), b = parseYmd(ds), n = r.interval || 1, days = Math.round((b - a) / 864e5);
+  switch (r.freq) {
+    case "daily": return days % n === 0;
+    case "weekly": return days % 7 === 0 && (days / 7) % n === 0;
+    case "monthly": return b.getDate() === a.getDate() && ((b.getFullYear() - a.getFullYear()) * 12 + b.getMonth() - a.getMonth()) % n === 0;
+    case "yearly": return b.getMonth() === a.getMonth() && b.getDate() === a.getDate() && (b.getFullYear() - a.getFullYear()) % n === 0;
+  }
+  return false;
+}
+function involves(e, pid) { return e.person === pid || e.person === "both"; }
+function dayConflicts(evs) {
+  const ids = new Set(); let garde = false, double = false;
+  for (let a = 0; a < evs.length; a++) for (let b = a + 1; b < evs.length; b++) {
+    const A = evs[a], B = evs[b];
+    if (A.person === "kids" || B.person === "kids") continue;
+    const [s1, e1] = rangeOf(A), [s2, e2] = rangeOf(B);
+    if (!(s1 < e2 && s2 < e1)) continue;
+    const splitBusy = (involves(A, "p1") && involves(B, "p2")) || (involves(A, "p2") && involves(B, "p1"));
+    const same = ["p1", "p2"].some(p => involves(A, p) && involves(B, p));
+    if (splitBusy && !(A.person === "both" && B.person === "both")) { garde = garde || !same; }
+    if (same) double = true;
+    if (splitBusy || same) { ids.add(A.id); ids.add(B.id); }
+  }
+  return { ids, garde, double };
+}
+function dayItems(dateStr) {
+  const evs = state.items.filter(i => ((i.type === "event" && occursOn(i, dateStr)) || (state.agenda.withTasks && i.type === "task" && i.date === dateStr)) && matchCommon(i));
+  evs.sort((a, b) => (a.time || "").localeCompare(b.time || "") || (a.type === "event" ? -1 : 1));
+  const allEvents = state.items.filter(i => i.type === "event" && i.time && occursOn(i, dateStr));
+  return { evs, conf: dayConflicts(allEvents) };
+}
+function dayBlock(ds, withHeader = true) {
+  const { evs, conf } = dayItems(ds), isToday = ds === todayStr();
+  const label = fmtDay(ds, { weekday: "long", day: "numeric", month: "long" });
+  const warn = [conf.garde ? "⚠ Vous êtes pris tous les deux en même temps — qui garde les enfants ?" : "", conf.double ? "⚠ Chevauchement dans l'agenda" : ""].filter(Boolean)
+    .map(t => `<div class="conf">${t}</div>`).join("");
+  return `<div class="day">
+    ${withHeader ? `<div class="dayh ${isToday ? "today" : ""}">${esc(label.charAt(0).toUpperCase() + label.slice(1))}${isToday ? " · aujourd'hui" : ""}<button class="add" data-act="addOn" data-d="${ds}" aria-label="Ajouter ce jour">+</button></div>` : ""}
+    ${warn}
+    ${evs.length ? `<div class="card">${evs.map(i => rowHTML(i, { time: true, conf: conf.ids.has(i.id), occ: ds })).join("")}</div>` : `<div class="noday">Rien de prévu</div>`}
+  </div>`;
+}
+function renderAgenda() {
+  const ag = state.agenda;
+  const modeSeg = `<div class="seg"><button class="${ag.mode === "week" ? "on" : ""}" data-act="agmode" data-v="week">Semaine</button><button class="${ag.mode === "month" ? "on" : ""}" data-act="agmode" data-v="month">Mois</button></div>`;
+  const filters = `<div class="filters">${modeSeg}${personChips()}
+    <div class="frow">${catSelect()}<label class="toggle"><input type="checkbox" data-act="agtasks" ${ag.withTasks ? "checked" : ""}> Inclure les tâches</label></div></div>`;
+  if (ag.mode === "week") {
+    const s = startOfWeek(ag.anchor), e = addDays(s, 6);
+    const lbl = `${s.getDate()} ${s.toLocaleDateString("fr-BE", { month: "short" })} – ${e.getDate()} ${e.toLocaleDateString("fr-BE", { month: "short", year: "numeric" })}`;
+    return `${filters}
+      <div class="agbar"><button class="navb" data-act="agprev">‹</button><div class="lbl">${esc(lbl)}</div><button class="navb" data-act="agnext">›</button><button class="btn small" data-act="agtoday">Auj.</button></div>
+      ${[0, 1, 2, 3, 4, 5, 6].map(n => dayBlock(ymd(addDays(s, n)))).join("")}`;
+  }
+  const a = ag.anchor, first = new Date(a.getFullYear(), a.getMonth(), 1), gs = startOfWeek(first);
+  const lbl = first.toLocaleDateString("fr-BE", { month: "long", year: "numeric" });
+  let cells = "";
+  for (let n = 0; n < 42; n++) {
+    const d = addDays(gs, n), ds = ymd(d);
+    if (n === 35 && d.getMonth() !== a.getMonth()) break;
+    const { evs, conf } = dayItems(ds);
+    const dots = evs.slice(0, 6).map(i => `<i style="--c:${esc(P(i.person).color)}"></i>`).join("");
+    cells += `<button class="cell ${d.getMonth() !== a.getMonth() ? "out" : ""} ${ds === todayStr() ? "today" : ""} ${ds === ag.sel ? "sel" : ""} ${conf.ids.size ? "conf" : ""}" data-act="agsel" data-d="${ds}">
+      <span class="n">${d.getDate()}</span><span class="dots">${dots}</span></button>`;
+  }
+  const selLabel = fmtDay(ag.sel, { weekday: "long", day: "numeric", month: "long" });
+  return `${filters}
+    <div class="agbar"><button class="navb" data-act="agprev">‹</button><div class="lbl">${esc(lbl.charAt(0).toUpperCase() + lbl.slice(1))}</div><button class="navb" data-act="agnext">›</button><button class="btn small" data-act="agtoday">Auj.</button></div>
+    <div class="month">${["L", "M", "M", "J", "V", "S", "D"].map(x => `<div class="dn">${x}</div>`).join("")}${cells}</div>
+    <div class="dayh">${esc(selLabel.charAt(0).toUpperCase() + selLabel.slice(1))}<button class="add" data-act="addOn" data-d="${ag.sel}">+</button></div>
+    ${dayBlock(ag.sel, false)}`;
+}
+
+/* --- Courses --- */
+function renderShop() {
+  const items = state.items.filter(i => i.type === "shop");
+  const cats = state.settings.shopCategories;
+  const open = items.filter(i => i.status !== "done"), done = items.filter(i => i.status === "done");
+  const groups = [...cats, ...new Set(open.map(i => i.category).filter(c => !cats.includes(c)))]
+    .map(c => [c, open.filter(i => (i.category || "Autre") === c)]).filter(g => g[1].length);
+  const lastCat = ls.get("na.shopcat", "Autre");
+  return `
+    <div class="quick"><input type="text" id="quickShop" placeholder="Ajouter un article…" enterkeyhint="done">
+      <button class="btn primary" data-act="quickShop">+</button></div>
+    <div class="frow" style="margin-bottom:6px"><select id="quickShopCat">${cats.map(c => `<option ${c === lastCat ? "selected" : ""}>${esc(c)}</option>`).join("")}</select></div>
+    ${groups.length ? groups.map(([c, arr]) => `<div class="group"><span>${esc(c)}</span><span>${arr.length}</span></div>
+      <div class="card">${arr.map(i => rowHTML(i, { noCat: true })).join("")}</div>`).join("") : `<div class="empty">La liste est vide 🛒</div>`}
+    ${done.length ? `<div class="group"><span>Dans le caddie (${done.length})</span><button class="btn small" data-act="clearShop">Retirer</button></div>
+      <div class="card">${done.map(i => rowHTML(i, { noCat: true })).join("")}</div>` : ""}`;
+}
+
+/* --- Réglages --- */
+function renderSettings() {
+  const s = state.settings;
+  const catList = (key) => `<div class="chips">${s[key].map((c, n) => `<span class="catchip">${esc(c)}<button data-act="delcat" data-k="${key}" data-n="${n}" aria-label="Supprimer">×</button></span>`).join("")}</div>
+    <div class="quick" style="margin:0"><input type="text" id="new-${key}" placeholder="Nouvelle…"><button class="btn" data-act="addcat" data-k="${key}">Ajouter</button></div>`;
+  return `
+  <div class="sect"><h2>Compte</h2><div class="card">
+    ${DEMO ? `<div>Mode démo (pas de compte). Les données restent sur cet appareil.</div>` :
+      `<div>Connecté : <b>${esc(state.user?.email)}</b></div><button class="btn" data-act="logout">Se déconnecter</button>`}
+    <label class="lab">Sur cet appareil, je suis
+      <select data-act="me">${["p1", "p2"].map(id => `<option value="${id}" ${state.me === id ? "selected" : ""}>${esc(P(id).name)}</option>`).join("")}</select></label>
+    <div class="small">Sert à pré-remplir « Pour qui » quand tu ajoutes quelque chose.</div>
+  </div></div>
+  <div class="sect"><h2>Personnes</h2><div class="card">
+    ${s.people.map((p, n) => `<div class="prow"><input type="color" value="${esc(p.color)}" data-act="pcolor" data-n="${n}"><input type="text" value="${esc(p.name)}" data-act="pname" data-n="${n}"></div>`).join("")}
+  </div></div>
+  <div class="sect"><h2>Catégories</h2><div class="card">${catList("categories")}</div></div>
+  <div class="sect"><h2>Rayons des courses</h2><div class="card">${catList("shopCategories")}</div></div>
+  <div class="sect"><h2>Sauvegarde</h2><div class="card">
+    <div class="frow"><button class="btn" data-act="export">Exporter (JSON)</button><button class="btn" data-act="import">Importer</button></div>
+    <button class="btn danger" data-act="purgeDone">Supprimer toutes les tâches faites</button>
+    <input type="file" id="importFile" accept="application/json" hidden>
+  </div></div>
+  <div class="small" style="text-align:center">Astuce iPhone : Safari → bouton Partager → « Sur l'écran d'accueil ».</div>`;
+}
+
+/* ---------- éditeur ---------- */
+const ed = $("#ed"), form = $("#edForm");
+let editing = null, editingOcc = null, edPerson = "p1";
+function fillCats(type, current) {
+  const list = type === "shop" ? state.settings.shopCategories : state.settings.categories;
+  const opts = [...list]; if (current && !opts.includes(current)) opts.push(current);
+  form.category.innerHTML = (type === "shop" ? "" : `<option value="">—</option>`) + opts.map(c => `<option ${c === current ? "selected" : ""}>${esc(c)}</option>`).join("");
+}
+function paintPersons() {
+  $("#edPerson").innerHTML = state.settings.people.map(p => `<button type="button" class="chip ${edPerson === p.id ? "on" : ""}" data-id="${p.id}" style="--c:${esc(p.color)}"><i></i>${esc(p.name)}</button>`).join("");
+}
+function setType(t) {
+  form.dataset.type = t;
+  document.querySelectorAll("#edType button").forEach(b => b.classList.toggle("on", b.dataset.type === t));
+  fillCats(t, form.category.value || (t === "shop" ? ls.get("na.shopcat", "Autre") : ""));
+}
+function openEditor(item, defaults = {}, occ = null) {
+  editing = item ? item.id : null; editingOcc = occ;
+  const it = item || { type: "task", title: "", person: state.me, category: "", date: "", time: "", endTime: "", priority: 0, status: "todo", notes: "", qty: "", ...defaults };
+  $("#edTitle").textContent = item ? "Modifier" : "Nouveau";
+  $("#edDel").hidden = !item; $("#edDup").hidden = !item;
+  form.title.value = it.title || ""; form.date.value = it.date || ""; form.time.value = it.time || ""; form.endTime.value = it.endTime || "";
+  form.priority.value = String(it.priority || 0); form.status.value = it.status || "todo"; form.notes.value = it.notes || ""; form.qty.value = it.qty || "";
+  form.endDate.value = it.endDate || "";
+  const rv = it.repeat?.freq ? `${it.repeat.freq}:${it.repeat.interval || 1}` : "";
+  if (rv && ![...form.repeat.options].some(o => o.value === rv)) form.repeat.add(new Option(`Tous les ${it.repeat.interval} (${it.repeat.freq})`, rv));
+  form.repeat.value = rv; form.until.value = it.repeat?.until || "";
+  form.classList.toggle("norepeat", !rv);
+  $("#edSkip").hidden = !(item && item.repeat?.freq && occ);
+  edPerson = it.person || state.me; paintPersons();
+  form.dataset.type = it.type; fillCats(it.type, it.category); setType(it.type); form.category.value = it.category || form.category.value;
+  ed.showModal();
+  if (!item) setTimeout(() => form.title.focus(), 50);
+}
+function readForm() {
+  const t = form.dataset.type;
+  const o = { type: t, title: form.title.value.trim(), category: form.category.value, notes: form.notes.value.trim(), person: t === "shop" ? "both" : edPerson };
+  if (t === "shop") Object.assign(o, { qty: form.qty.value.trim() });
+  else Object.assign(o, { date: form.date.value, time: form.time.value });
+  o.repeat = null; o.endDate = "";
+  if (t === "event") {
+    o.endTime = form.endTime.value;
+    o.endDate = form.endDate.value && form.endDate.value > o.date ? form.endDate.value : "";
+    if (form.repeat.value && o.date) { const [freq, n] = form.repeat.value.split(":"); o.repeat = { freq, interval: +n || 1, until: form.until.value || "" }; }
+  }
+  if (t === "task") Object.assign(o, { priority: +form.priority.value, status: form.status.value });
+  if (t !== "task") o.status = editing ? (state.items.find(i => i.id === editing)?.status || "todo") : "todo";
+  return o;
+}
+$("#edType").onclick = e => { const b = e.target.closest("button"); if (b) setType(b.dataset.type); };
+$("#edPerson").onclick = e => { const b = e.target.closest("button"); if (b) { edPerson = b.dataset.id; paintPersons(); } };
+$("#edClose").onclick = () => ed.close();
+form.repeat.onchange = () => form.classList.toggle("norepeat", !form.repeat.value);
+$("#edSkip").onclick = () => {
+  const it = state.items.find(i => i.id === editing); if (!it || !editingOcc) return;
+  store.update(editing, { exdates: [...(it.exdates || []), editingOcc] }).catch(fail); ed.close(); toast("Retiré pour ce jour uniquement");
+};
+ed.addEventListener("click", e => { if (e.target === ed) ed.close(); });
+form.onsubmit = e => {
+  e.preventDefault();
+  const o = readForm(); if (!o.title) return;
+  if (o.type === "shop") ls.set("na.shopcat", o.category);
+  (editing ? store.update(editing, o) : store.add(o)).catch(fail);
+  ed.close();
+};
+$("#edDel").onclick = () => { if (editing && confirm("Supprimer cet élément ?")) { store.remove(editing).catch(fail); ed.close(); } };
+$("#edDup").onclick = () => { const o = readForm(); store.add({ ...o, title: o.title + " (copie)" }).catch(fail); ed.close(); toast("Dupliqué"); };
+
+/* ---------- interactions ---------- */
+$("#tabs").onclick = e => { const b = e.target.closest("button"); if (!b) return; state.view = b.dataset.view; ls.set("na.view", state.view); scrollTo(0, 0); render(); };
+$("#fab").onclick = () => {
+  if (state.view === "agenda") openEditor(null, { type: "event", date: state.agenda.mode === "month" ? state.agenda.sel : todayStr() });
+  else if (state.view === "shop") openEditor(null, { type: "shop", category: ls.get("na.shopcat", "Autre") });
+  else openEditor(null, { type: "task" });
+};
+function quickAdd(kind) {
+  if (kind === "task") {
+    const inp = $("#quickTask"), t = inp.value.trim(); if (!t) return;
+    store.add({ type: "task", title: t, person: state.me, category: state.filters.category || "", date: "", time: "", priority: 0, status: "todo", notes: "" }).catch(fail);
+    inp.value = "";
+  } else {
+    const inp = $("#quickShop"), t = inp.value.trim(); if (!t) return;
+    const cat = $("#quickShopCat").value; ls.set("na.shopcat", cat);
+    store.add({ type: "shop", title: t, person: "both", category: cat, qty: "", status: "todo", notes: "" }).catch(fail);
+    inp.value = "";
+  }
+  setTimeout(() => $(kind === "task" ? "#quickTask" : "#quickShop")?.focus(), 30);
+}
+const main = $("#main");
+main.addEventListener("click", e => {
+  const el = e.target.closest("[data-act]"); if (!el) return;
+  const act = el.dataset.act, id = el.dataset.id, f = state.filters, ag = state.agenda;
+  switch (act) {
+    case "edit": openEditor(state.items.find(i => i.id === id), {}, el.dataset.d || null); break;
+    case "toggle": { const it = state.items.find(i => i.id === id); if (it) store.update(id, { status: it.status === "done" ? "todo" : "done" }).catch(fail); break; }
+    case "fperson": f.persons = f.persons.includes(id) ? f.persons.filter(x => x !== id) : [...f.persons, id]; saveFilters(); render(); break;
+    case "fstatus": f.status = el.dataset.v; saveFilters(); render(); break;
+    case "quickTask": quickAdd("task"); break;
+    case "quickShop": quickAdd("shop"); break;
+    case "clearShop": store.removeMany(state.items.filter(i => i.type === "shop" && i.status === "done").map(i => i.id)).catch(fail); break;
+    case "agmode": ag.mode = el.dataset.v; ls.set("na.agmode", ag.mode); render(); break;
+    case "agprev": case "agnext": {
+      const dir = act === "agnext" ? 1 : -1;
+      ag.anchor = ag.mode === "week" ? addDays(ag.anchor, 7 * dir) : new Date(ag.anchor.getFullYear(), ag.anchor.getMonth() + dir, 1);
+      render(); break;
+    }
+    case "agtoday": ag.anchor = new Date(); ag.sel = todayStr(); render(); break;
+    case "agsel": ag.sel = el.dataset.d; render(); break;
+    case "addOn": openEditor(null, { type: "event", date: el.dataset.d }); break;
+    case "logout": fbRef.a.signOut(fbRef.auth); break;
+    case "delcat": { const s = clone(state.settings); s[el.dataset.k].splice(+el.dataset.n, 1); saveSettings(s); break; }
+    case "addcat": { const inp = $("#new-" + el.dataset.k), v = inp.value.trim(); if (!v) return; const s = clone(state.settings); if (!s[el.dataset.k].includes(v)) s[el.dataset.k].push(v); saveSettings(s); break; }
+    case "export": {
+      const blob = new Blob([JSON.stringify({ exportedAt: new Date().toISOString(), settings: state.settings, items: state.items }, null, 2)], { type: "application/json" });
+      const a = document.createElement("a"); a.href = URL.createObjectURL(blob); a.download = `agenda-sauvegarde-${todayStr()}.json`; a.click(); break;
+    }
+    case "import": $("#importFile").click(); break;
+    case "purgeDone": {
+      const ids = state.items.filter(i => i.type === "task" && i.status === "done").map(i => i.id);
+      if (ids.length && confirm(`Supprimer ${ids.length} tâche(s) faite(s) ?`)) store.removeMany(ids).catch(fail); break;
+    }
+  }
+});
+function saveSettings(s) { state.settings = s; store.saveSettings(s).catch(fail); render(); }
+main.addEventListener("input", e => {
+  if (e.target.dataset.f === "q") { state.filters.q = e.target.value; render(); }
+});
+main.addEventListener("change", e => {
+  const t = e.target, f = state.filters;
+  if (t.dataset.f === "category") { f.category = t.value; saveFilters(); render(); }
+  else if (t.dataset.f === "sort") { f.sort = t.value; saveFilters(); render(); }
+  else if (t.dataset.act === "agtasks") { state.agenda.withTasks = t.checked; ls.set("na.agtasks", t.checked); render(); }
+  else if (t.dataset.act === "me") { state.me = t.value; ls.set("na.me", t.value); }
+  else if (t.dataset.act === "pname" || t.dataset.act === "pcolor") {
+    const s = clone(state.settings), p = s.people[+t.dataset.n];
+    if (t.dataset.act === "pname") p.name = t.value.trim() || p.name; else p.color = t.value;
+    saveSettings(s);
+  }
+  else if (t.id === "importFile" && t.files[0]) {
+    t.files[0].text().then(txt => {
+      const data = JSON.parse(txt); const all = Array.isArray(data) ? data : data.items || [];
+      const known = new Set(state.items.map(i => i.src).filter(Boolean));
+      const items = all.filter(i => !i.src || !known.has(i.src)), skipped = all.length - items.length;
+      if (!items.length) { toast("Tout est déjà importé."); return; }
+      if (!confirm(`Importer ${items.length} élément(s) ?${skipped ? ` (${skipped} déjà présents ignorés)` : ""}`)) return;
+      const s = clone(state.settings); let ch = false;
+      items.forEach(i => { if (i.category && i.type !== "shop" && !s.categories.includes(i.category)) { s.categories.push(i.category); ch = true; } });
+      if (ch) saveSettings(s);
+      store.importItems(items).then(() => toast(`Import terminé : ${items.length} élément(s)`)).catch(fail);
+    }).catch(() => toast("Fichier invalide")).finally(() => { t.value = ""; });
+  }
+});
+main.addEventListener("keydown", e => {
+  if (e.key !== "Enter") return;
+  if (e.target.id === "quickTask") { e.preventDefault(); quickAdd("task"); }
+  else if (e.target.id === "quickShop") { e.preventDefault(); quickAdd("shop"); }
+  else if (e.target.id?.startsWith("new-")) { e.preventDefault(); e.target.nextElementSibling.click(); }
+});
+
+boot();
+</script>
+</body>
+</html>
