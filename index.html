@@ -129,6 +129,8 @@ textarea{min-height:70px;resize:vertical}
 .catchip{display:inline-flex;align-items:center;gap:6px;background:var(--soft);border-radius:999px;padding:5px 6px 5px 12px;font-size:14px}
 .catchip button{border:0;background:var(--line);border-radius:50%;width:22px;height:22px;line-height:1;padding:0;color:var(--mute)}
 .small{font-size:13px;color:var(--mute)}
+.nsub{font-weight:700;font-size:14px;margin-top:8px}
+.toggle.sw{color:var(--ink);font-size:15px}
 
 /* editor */
 dialog{border:0;padding:0;background:var(--card);color:var(--ink);width:100%;max-width:560px;border-radius:18px 18px 0 0;margin:auto auto 0;max-height:92dvh}
@@ -138,14 +140,21 @@ dialog::backdrop{background:rgba(0,0,0,.4)}
 .sheet-head{display:flex;align-items:center}
 .sheet-head h2{flex:1;margin:0;font-size:18px}
 .x{border:0;background:var(--soft);border-radius:50%;width:32px;height:32px;font-size:18px}
-.grid2{display:grid;grid-template-columns:1fr 1fr;gap:10px}
+.grid2{display:grid;grid-template-columns:minmax(0,1fr) minmax(0,1fr);gap:10px}
+.grid2 > *{min-width:0}
+.grid2 input,.grid2 select{min-width:0;max-width:100%}
+dialog{overflow-x:hidden;max-width:min(560px,100vw)}
 .grid2 label,.lab{font-size:13px;color:var(--mute);display:grid;gap:4px}
-.actions{display:flex;gap:8px}
-.actions .primary{margin-left:auto;flex:1}
+.actions{display:flex;gap:8px;flex-wrap:wrap}
+.actions .btn{flex:1 1 auto}
+.actions .primary{flex:1 1 100%;order:9}
 #edForm[data-type=shop] :is(.f-date,.f-time,.f-end,.f-prio,.f-status,.f-person){display:none}
 #edForm[data-type=task] .f-end,#edForm[data-type=task] .f-qty{display:none}
 #edForm[data-type=event] :is(.f-prio,.f-status,.f-qty){display:none}
 #edForm:not([data-type=shop]) .f-qty{display:none}
+#edForm:not([data-type=event]) :is(.f-enddate,.f-repeat,.f-until){display:none}
+#edForm.norepeat .f-until{display:none}
+.rep{font-size:12px}
 
 /* login */
 .login{min-height:80dvh;display:grid;place-items:center}
@@ -185,6 +194,9 @@ dialog::backdrop{background:rgba(0,0,0,.4)}
       <label class="f-date">Date<input type="date" name="date"></label>
       <label class="f-time">Heure<input type="time" name="time"></label>
       <label class="f-end">Fin<input type="time" name="endTime"></label>
+      <label class="f-enddate">Jusqu'au (plusieurs jours)<input type="date" name="endDate"></label>
+      <label class="f-repeat">Répéter<select name="repeat"><option value="">Jamais</option><option value="daily:1">Chaque jour</option><option value="weekly:1">Chaque semaine</option><option value="weekly:2">Toutes les 2 semaines</option><option value="monthly:1">Chaque mois</option><option value="yearly:1">Chaque année</option></select></label>
+      <label class="f-until">Fin de la répétition<input type="date" name="until"></label>
       <label class="f-prio">Priorité<select name="priority"><option value="0">Normale</option><option value="1">Haute</option><option value="2">Urgente</option></select></label>
       <label class="f-status">Statut<select name="status"><option value="todo">À faire</option><option value="doing">En cours</option><option value="done">Fait</option></select></label>
     </div>
@@ -192,6 +204,7 @@ dialog::backdrop{background:rgba(0,0,0,.4)}
     <div class="actions">
       <button type="button" class="btn danger" id="edDel">Supprimer</button>
       <button type="button" class="btn" id="edDup">Dupliquer</button>
+      <button type="button" class="btn" id="edSkip">Retirer ce jour</button>
       <button type="submit" class="btn primary">Enregistrer</button>
     </div>
   </form>
@@ -213,6 +226,8 @@ const FIREBASE_CONFIG = {
   appId: "1:851152496646:web:9cac6e4dd25a80be7e3b87"
 };
 const FB_VERSION = "10.12.2";
+/* Clé publique « Web Push » : Firebase > Paramètres du projet > Cloud Messaging > Certificats Web Push */
+const VAPID_KEY = "BCZQJTTrTnjWoyTtFpRavHpY7oC2FsOSKxSAUVgZgo6H2d066CT4-Ex_b9lLbtYMIzpk8fm4IDb6sdvWe5RfSX4";
 const DEMO = !FIREBASE_CONFIG.apiKey;
 
 const DEFAULT_SETTINGS = {
@@ -222,7 +237,7 @@ const DEFAULT_SETTINGS = {
     { id: "both", name: "Nous deux", color: "#8b5cf6" },
     { id: "kids", name: "Enfants", color: "#f59e0b" }
   ],
-  categories: ["Presta / MDR", "Concerts & répètes", "Maison", "Enfants", "Admin", "Rendez-vous", "Loisirs"],
+  categories: ["Presta / MDR", "Concerts & répètes", "Maison", "Enfants", "Admin", "Rendez-vous", "Loisirs", "Anniversaires", "Animaux", "Fériés & congés"],
   shopCategories: ["Fruits & légumes", "Frais", "Boucherie", "Épicerie", "Boissons", "Surgelés", "Maison & hygiène", "Autre"]
 };
 
@@ -309,11 +324,13 @@ async function loadFirebase() {
     import(base + "firebase-app.js"), import(base + "firebase-auth.js"), import(base + "firebase-firestore.js")
   ]);
   const app = appM.initializeApp(FIREBASE_CONFIG);
-  const auth = authM.getAuth(app);
+  let auth;
+  try { auth = authM.initializeAuth(app, { persistence: [authM.indexedDBLocalPersistence, authM.browserLocalPersistence] }); }
+  catch { auth = authM.getAuth(app); }
   let db;
   try { db = fsM.initializeFirestore(app, { localCache: fsM.persistentLocalCache({ tabManager: fsM.persistentMultipleTabManager() }) }); }
   catch { db = fsM.getFirestore(app); }
-  return { auth, a: authM, db, f: fsM };
+  return { app, auth, a: authM, db, f: fsM };
 }
 function createCloudStore(fb, user) {
   const { db, f } = fb;
@@ -370,6 +387,94 @@ function startApp() {
   unsub.push(store.onSettings(s => { state.settings = s; if (state.view !== "settings") render(); }, onErr));
   unsub.push(store.onItems(items => { state.items = items; if (state.view !== "settings") render(); }, onErr));
   render(); paintSync();
+  if (store.mode === "cloud") { watchDevice(); refreshToken(); }
+}
+
+/* ---------- notifications (Firebase Cloud Messaging) ---------- */
+const NOTIF_DEFAULTS = { remind: true, leads: [60], allDay: "veille20", persons: [], categories: [], onAdd: true, onEdit: false, onDone: false, types: ["event", "task", "shop"], quiet: true };
+const isStandalone = () => matchMedia("(display-mode: standalone)").matches || navigator.standalone === true;
+const isIOS = () => /iPhone|iPad|iPod/.test(navigator.userAgent);
+let msgM = null, messaging = null, devUnsub = null, fgHooked = false;
+state.dev = null;
+function deviceId() { let id = ls.get("na.deviceId", null); if (!id) { id = uid() + uid(); ls.set("na.deviceId", id); } return id; }
+const devRef = () => fbRef.f.doc(fbRef.db, "devices", deviceId());
+function notifSupport() {
+  if (DEMO || !fbRef) return "demo";
+  if (!("serviceWorker" in navigator) || !("Notification" in window) || !("PushManager" in window)) return isIOS() && !isStandalone() ? "ios-browser" : "no";
+  if (!VAPID_KEY) return "nokey";
+  return "ok";
+}
+async function getMessagingToken() {
+  msgM = msgM || await import(`https://www.gstatic.com/firebasejs/${FB_VERSION}/firebase-messaging.js`);
+  if (!(await msgM.isSupported())) throw new Error("notifications non gérées par ce navigateur");
+  const reg = await navigator.serviceWorker.register("firebase-messaging-sw.js");
+  await navigator.serviceWorker.ready;
+  messaging = messaging || msgM.getMessaging(fbRef.app);
+  const token = await msgM.getToken(messaging, { vapidKey: VAPID_KEY, serviceWorkerRegistration: reg });
+  if (!fgHooked) { msgM.onMessage(messaging, m => toast(`${m.notification?.title || ""} — ${m.notification?.body || ""}`, 6000)); fgHooked = true; }
+  return token;
+}
+const devInfo = token => ({ token, email: state.user.email.toLowerCase(), name: P(state.me).name, me: state.me, ua: navigator.userAgent.slice(0, 140), updatedAt: Date.now() });
+async function enableNotifs() {
+  try {
+    const perm = await Notification.requestPermission();
+    if (perm !== "granted") { toast("Notifications refusées. Pour changer : Réglages de l'iPhone → Notifications → Agenda.", 6000); return; }
+    const token = await getMessagingToken();
+    await fbRef.f.setDoc(devRef(), { ...devInfo(token), prefs: state.dev?.prefs || NOTIF_DEFAULTS }, { merge: true });
+    ls.set("na.notifOn", true); watchDevice(); toast("Notifications activées 🎉");
+  } catch (e) { console.error(e); toast("Impossible d'activer : " + (e.message || e), 6000); }
+}
+async function disableNotifs() {
+  try { if (messaging && msgM) await msgM.deleteToken(messaging).catch(() => {}); await fbRef.f.deleteDoc(devRef()); } catch (e) { console.error(e); }
+  ls.set("na.notifOn", false); state.dev = null; render();
+}
+function watchDevice() {
+  if (DEMO || !fbRef || devUnsub) return;
+  devUnsub = fbRef.f.onSnapshot(devRef(), s => { state.dev = s.exists() ? s.data() : null; if (state.view === "settings") render(); }, () => {});
+}
+async function refreshToken() {
+  if (!ls.get("na.notifOn", false) || notifSupport() !== "ok" || Notification.permission !== "granted") return;
+  try { await fbRef.f.setDoc(devRef(), devInfo(await getMessagingToken()), { merge: true }); } catch (e) { console.warn("jeton", e); }
+}
+function setPref(k, v) {
+  const prefs = { ...NOTIF_DEFAULTS, ...(state.dev?.prefs || {}), [k]: v };
+  state.dev = { ...(state.dev || {}), prefs }; render();
+  fbRef.f.setDoc(devRef(), { prefs }, { merge: true }).catch(fail);
+}
+function togglePrefList(k, v) { const a = ({ ...NOTIF_DEFAULTS, ...(state.dev?.prefs || {}) })[k] || []; setPref(k, a.includes(v) ? a.filter(x => x !== v) : [...a, v]); }
+async function sendTest() {
+  if (!state.dev?.token) return;
+  await fbRef.f.addDoc(fbRef.f.collection(fbRef.db, "pings"), { token: state.dev.token, deviceId: deviceId(), at: Date.now() }).catch(fail);
+  toast("Test envoyé : la notif arrive dans quelques secondes.", 4000);
+}
+function notifSection() {
+  const sup = notifSupport();
+  let body;
+  if (sup === "demo") body = `<div class="small">Disponible quand l'appli est connectée (pas en mode démo).</div>`;
+  else if (sup === "ios-browser") body = `<div>Sur iPhone, les notifications marchent uniquement depuis l'icône de l'écran d'accueil.</div><div class="small">Safari → Partager → « Sur l'écran d'accueil », puis ouvre l'appli depuis l'icône (iOS 16.4 minimum).</div>`;
+  else if (sup === "no") body = `<div class="small">Ce navigateur ne gère pas les notifications.</div>`;
+  else if (sup === "nokey") body = `<div class="small">La clé de notification n'est pas encore configurée dans l'appli.</div>`;
+  else if (!state.dev) body = `<button class="btn primary" data-act="notifOn">🔔 Activer sur cet appareil</button><div class="small">Chaque téléphone a ses propres réglages de notifications.</div>`;
+  else {
+    const p = { ...NOTIF_DEFAULTS, ...(state.dev.prefs || {}) };
+    const sw = (k, l) => `<label class="toggle sw"><input type="checkbox" data-act="np" data-k="${k}" ${p[k] ? "checked" : ""}> ${l}</label>`;
+    const chip = (k, v, l, c) => `<button class="chip ${(p[k] || []).includes(v) ? "on" : ""}" data-act="npl" data-k="${k}" data-v="${esc(String(v))}"${c ? ` style="--c:${esc(c)}"` : ""}>${c ? "<i></i>" : ""}${esc(l)}</button>`;
+    const opt = (v, l) => `<option value="${v}" ${p.allDay === v ? "selected" : ""}>${l}</option>`;
+    body = `
+      <div class="nsub">⏰ Rappels avant les événements</div>
+      ${sw("remind", "Activer les rappels")}
+      ${p.remind ? `<div class="chips">${[[15, "15 min"], [30, "30 min"], [60, "1 h"], [120, "2 h"], [1440, "24 h avant"]].map(([v, l]) => chip("leads", v, l)).join("")}</div>
+      <label class="lab">Événements « Journée »<select data-act="npsel" data-k="allDay">${opt("off", "Pas de rappel")}${opt("veille20", "La veille à 20 h")}${opt("jour8", "Le jour même à 8 h")}</select></label>` : ""}
+      <div class="nsub">✍️ Quand l'autre change quelque chose</div>
+      ${sw("onAdd", "Quand il/elle ajoute")}${sw("onEdit", "Quand il/elle modifie")}${sw("onDone", "Quand il/elle coche")}
+      <div class="chips">${chip("types", "event", "📅 Agenda")}${chip("types", "task", "✅ Tâches")}${chip("types", "shop", "🛒 Courses")}</div>
+      ${sw("quiet", "Silence entre 22 h et 7 h")}
+      <div class="nsub">🎯 Seulement pour… <span class="small">(rien de sélectionné = tout)</span></div>
+      <div class="chips">${state.settings.people.map(pp => chip("persons", pp.id, pp.name, pp.color)).join("")}</div>
+      <div class="chips">${state.settings.categories.map(c => chip("categories", c, c)).join("")}</div>
+      <div class="frow"><button class="btn" data-act="notifTest">Envoyer un test</button><button class="btn danger" data-act="notifOff">Désactiver</button></div>`;
+  }
+  return `<div class="sect"><h2>Notifications</h2><div class="card">${body}</div></div>`;
 }
 
 /* ---------- connexion (email + mot de passe) ---------- */
@@ -379,7 +484,7 @@ function renderLogin() {
   <div class="login"><form class="card" id="loginForm">
     <h2>Notre Agenda</h2>
     <div class="small">Connecte-toi avec ton email et ton mot de passe.</div>
-    <input type="email" name="email" placeholder="Email" autocomplete="username" required>
+    <input type="email" name="email" placeholder="Email" autocomplete="username" required value="${esc(ls.get("na.lastEmail", ""))}">
     <input type="password" name="pw" placeholder="Mot de passe" autocomplete="current-password" required>
     <div class="err" id="loginErr"></div>
     <button class="btn primary" type="submit">Se connecter</button>
@@ -390,7 +495,7 @@ function renderLogin() {
     e.preventDefault();
     const fd = new FormData(form);
     $("#loginErr").textContent = "";
-    try { await fbRef.a.signInWithEmailAndPassword(fbRef.auth, fd.get("email").trim(), fd.get("pw")); }
+    try { ls.set("na.lastEmail", fd.get("email").trim()); await fbRef.a.signInWithEmailAndPassword(fbRef.auth, fd.get("email").trim(), fd.get("pw")); }
     catch (err) {
       const m = { "auth/invalid-credential": "Email ou mot de passe incorrect.", "auth/wrong-password": "Mot de passe incorrect.",
         "auth/user-not-found": "Compte inconnu.", "auth/too-many-requests": "Trop d'essais, réessaie dans quelques minutes.",
@@ -463,11 +568,13 @@ function rowHTML(i, opts = {}) {
   if (i.category && !opts.noCat) meta.push(`<span class="tag">${esc(i.category)}</span>`);
   if (i.qty) meta.push(`<span>${esc(i.qty)}</span>`);
   if (i.date && !opts.time) meta.push(`<span class="${late ? "late-t" : ""}">${i.date === today ? "Aujourd'hui" : esc(fmtDay(i.date))}${i.time ? " · " + esc(i.time) : ""}</span>`);
+  if (i.type === "event" && i.repeat?.freq) meta.push(`<span class="rep" title="Répétition">↻ ${esc(REPEAT_LABEL[i.repeat.freq + ":" + (i.repeat.interval || 1)] || "Répété")}</span>`);
+  if (i.type === "event" && i.endDate && i.endDate > i.date) meta.push(`<span>→ ${esc(fmtDay(i.endDate))}</span>`);
   if (i.status === "doing") meta.push(`<span style="color:var(--warn);font-weight:600">En cours</span>`);
   if (i.notes) meta.push(`<span title="Notes">📝</span>`);
   return `<div class="row ${i.status === "done" ? "done" : ""} ${opts.conf ? "isconf" : ""}" style="--c:${i.type === "shop" ? "transparent" : esc(p.color)}">
     ${time}${check}
-    <div class="body" data-act="edit" data-id="${i.id}">
+    <div class="body" data-act="edit" data-id="${i.id}"${opts.occ ? ` data-d="${opts.occ}"` : ""}>
       <div class="title">${prio}${esc(i.title)}</div>
       ${meta.length ? `<div class="meta">${meta.join("")}</div>` : ""}
     </div></div>`;
@@ -523,6 +630,21 @@ function rangeOf(e) {
   if (en <= s) en = 1440;
   return [s, en];
 }
+const REPEAT_LABEL = { "daily:1": "chaque jour", "weekly:1": "chaque semaine", "weekly:2": "toutes les 2 sem.", "monthly:1": "chaque mois", "yearly:1": "chaque année" };
+function occursOn(i, ds) {
+  if (!i.date) return false;
+  const r = i.repeat;
+  if (!r || !r.freq) return ds >= i.date && ds <= (i.endDate && i.endDate > i.date ? i.endDate : i.date);
+  if (ds < i.date || (r.until && ds > r.until) || (i.exdates && i.exdates.includes(ds))) return false;
+  const a = parseYmd(i.date), b = parseYmd(ds), n = r.interval || 1, days = Math.round((b - a) / 864e5);
+  switch (r.freq) {
+    case "daily": return days % n === 0;
+    case "weekly": return days % 7 === 0 && (days / 7) % n === 0;
+    case "monthly": return b.getDate() === a.getDate() && ((b.getFullYear() - a.getFullYear()) * 12 + b.getMonth() - a.getMonth()) % n === 0;
+    case "yearly": return b.getMonth() === a.getMonth() && b.getDate() === a.getDate() && (b.getFullYear() - a.getFullYear()) % n === 0;
+  }
+  return false;
+}
 function involves(e, pid) { return e.person === pid || e.person === "both"; }
 function dayConflicts(evs) {
   const ids = new Set(); let garde = false, double = false;
@@ -540,9 +662,9 @@ function dayConflicts(evs) {
   return { ids, garde, double };
 }
 function dayItems(dateStr) {
-  const evs = state.items.filter(i => i.date === dateStr && (i.type === "event" || (state.agenda.withTasks && i.type === "task")) && matchCommon(i));
+  const evs = state.items.filter(i => ((i.type === "event" && occursOn(i, dateStr)) || (state.agenda.withTasks && i.type === "task" && i.date === dateStr)) && matchCommon(i));
   evs.sort((a, b) => (a.time || "").localeCompare(b.time || "") || (a.type === "event" ? -1 : 1));
-  const allEvents = state.items.filter(i => i.date === dateStr && i.type === "event");
+  const allEvents = state.items.filter(i => i.type === "event" && i.time && occursOn(i, dateStr));
   return { evs, conf: dayConflicts(allEvents) };
 }
 function dayBlock(ds, withHeader = true) {
@@ -553,7 +675,7 @@ function dayBlock(ds, withHeader = true) {
   return `<div class="day">
     ${withHeader ? `<div class="dayh ${isToday ? "today" : ""}">${esc(label.charAt(0).toUpperCase() + label.slice(1))}${isToday ? " · aujourd'hui" : ""}<button class="add" data-act="addOn" data-d="${ds}" aria-label="Ajouter ce jour">+</button></div>` : ""}
     ${warn}
-    ${evs.length ? `<div class="card">${evs.map(i => rowHTML(i, { time: true, conf: conf.ids.has(i.id) })).join("")}</div>` : `<div class="noday">Rien de prévu</div>`}
+    ${evs.length ? `<div class="card">${evs.map(i => rowHTML(i, { time: true, conf: conf.ids.has(i.id), occ: ds })).join("")}</div>` : `<div class="noday">Rien de prévu</div>`}
   </div>`;
 }
 function renderAgenda() {
@@ -618,6 +740,7 @@ function renderSettings() {
       <select data-act="me">${["p1", "p2"].map(id => `<option value="${id}" ${state.me === id ? "selected" : ""}>${esc(P(id).name)}</option>`).join("")}</select></label>
     <div class="small">Sert à pré-remplir « Pour qui » quand tu ajoutes quelque chose.</div>
   </div></div>
+  ${notifSection()}
   <div class="sect"><h2>Personnes</h2><div class="card">
     ${s.people.map((p, n) => `<div class="prow"><input type="color" value="${esc(p.color)}" data-act="pcolor" data-n="${n}"><input type="text" value="${esc(p.name)}" data-act="pname" data-n="${n}"></div>`).join("")}
   </div></div>
@@ -633,7 +756,7 @@ function renderSettings() {
 
 /* ---------- éditeur ---------- */
 const ed = $("#ed"), form = $("#edForm");
-let editing = null, edPerson = "p1";
+let editing = null, editingOcc = null, edPerson = "p1";
 function fillCats(type, current) {
   const list = type === "shop" ? state.settings.shopCategories : state.settings.categories;
   const opts = [...list]; if (current && !opts.includes(current)) opts.push(current);
@@ -647,13 +770,19 @@ function setType(t) {
   document.querySelectorAll("#edType button").forEach(b => b.classList.toggle("on", b.dataset.type === t));
   fillCats(t, form.category.value || (t === "shop" ? ls.get("na.shopcat", "Autre") : ""));
 }
-function openEditor(item, defaults = {}) {
-  editing = item ? item.id : null;
+function openEditor(item, defaults = {}, occ = null) {
+  editing = item ? item.id : null; editingOcc = occ;
   const it = item || { type: "task", title: "", person: state.me, category: "", date: "", time: "", endTime: "", priority: 0, status: "todo", notes: "", qty: "", ...defaults };
   $("#edTitle").textContent = item ? "Modifier" : "Nouveau";
   $("#edDel").hidden = !item; $("#edDup").hidden = !item;
   form.title.value = it.title || ""; form.date.value = it.date || ""; form.time.value = it.time || ""; form.endTime.value = it.endTime || "";
   form.priority.value = String(it.priority || 0); form.status.value = it.status || "todo"; form.notes.value = it.notes || ""; form.qty.value = it.qty || "";
+  form.endDate.value = it.endDate || "";
+  const rv = it.repeat?.freq ? `${it.repeat.freq}:${it.repeat.interval || 1}` : "";
+  if (rv && ![...form.repeat.options].some(o => o.value === rv)) form.repeat.add(new Option(`Tous les ${it.repeat.interval} (${it.repeat.freq})`, rv));
+  form.repeat.value = rv; form.until.value = it.repeat?.until || "";
+  form.classList.toggle("norepeat", !rv);
+  $("#edSkip").hidden = !(item && item.repeat?.freq && occ);
   edPerson = it.person || state.me; paintPersons();
   form.dataset.type = it.type; fillCats(it.type, it.category); setType(it.type); form.category.value = it.category || form.category.value;
   ed.showModal();
@@ -664,7 +793,12 @@ function readForm() {
   const o = { type: t, title: form.title.value.trim(), category: form.category.value, notes: form.notes.value.trim(), person: t === "shop" ? "both" : edPerson };
   if (t === "shop") Object.assign(o, { qty: form.qty.value.trim() });
   else Object.assign(o, { date: form.date.value, time: form.time.value });
-  if (t === "event") o.endTime = form.endTime.value;
+  o.repeat = null; o.endDate = "";
+  if (t === "event") {
+    o.endTime = form.endTime.value;
+    o.endDate = form.endDate.value && form.endDate.value > o.date ? form.endDate.value : "";
+    if (form.repeat.value && o.date) { const [freq, n] = form.repeat.value.split(":"); o.repeat = { freq, interval: +n || 1, until: form.until.value || "" }; }
+  }
   if (t === "task") Object.assign(o, { priority: +form.priority.value, status: form.status.value });
   if (t !== "task") o.status = editing ? (state.items.find(i => i.id === editing)?.status || "todo") : "todo";
   return o;
@@ -672,6 +806,11 @@ function readForm() {
 $("#edType").onclick = e => { const b = e.target.closest("button"); if (b) setType(b.dataset.type); };
 $("#edPerson").onclick = e => { const b = e.target.closest("button"); if (b) { edPerson = b.dataset.id; paintPersons(); } };
 $("#edClose").onclick = () => ed.close();
+form.repeat.onchange = () => form.classList.toggle("norepeat", !form.repeat.value);
+$("#edSkip").onclick = () => {
+  const it = state.items.find(i => i.id === editing); if (!it || !editingOcc) return;
+  store.update(editing, { exdates: [...(it.exdates || []), editingOcc] }).catch(fail); ed.close(); toast("Retiré pour ce jour uniquement");
+};
 ed.addEventListener("click", e => { if (e.target === ed) ed.close(); });
 form.onsubmit = e => {
   e.preventDefault();
@@ -708,7 +847,7 @@ main.addEventListener("click", e => {
   const el = e.target.closest("[data-act]"); if (!el) return;
   const act = el.dataset.act, id = el.dataset.id, f = state.filters, ag = state.agenda;
   switch (act) {
-    case "edit": openEditor(state.items.find(i => i.id === id)); break;
+    case "edit": openEditor(state.items.find(i => i.id === id), {}, el.dataset.d || null); break;
     case "toggle": { const it = state.items.find(i => i.id === id); if (it) store.update(id, { status: it.status === "done" ? "todo" : "done" }).catch(fail); break; }
     case "fperson": f.persons = f.persons.includes(id) ? f.persons.filter(x => x !== id) : [...f.persons, id]; saveFilters(); render(); break;
     case "fstatus": f.status = el.dataset.v; saveFilters(); render(); break;
@@ -724,7 +863,11 @@ main.addEventListener("click", e => {
     case "agtoday": ag.anchor = new Date(); ag.sel = todayStr(); render(); break;
     case "agsel": ag.sel = el.dataset.d; render(); break;
     case "addOn": openEditor(null, { type: "event", date: el.dataset.d }); break;
-    case "logout": fbRef.a.signOut(fbRef.auth); break;
+    case "logout": if (devUnsub) { devUnsub(); devUnsub = null; } fbRef.a.signOut(fbRef.auth); break;
+    case "notifOn": enableNotifs(); break;
+    case "notifOff": if (confirm("Désactiver les notifications sur cet appareil ?")) disableNotifs(); break;
+    case "notifTest": sendTest(); break;
+    case "npl": togglePrefList(el.dataset.k, el.dataset.k === "leads" ? +el.dataset.v : el.dataset.v); break;
     case "delcat": { const s = clone(state.settings); s[el.dataset.k].splice(+el.dataset.n, 1); saveSettings(s); break; }
     case "addcat": { const inp = $("#new-" + el.dataset.k), v = inp.value.trim(); if (!v) return; const s = clone(state.settings); if (!s[el.dataset.k].includes(v)) s[el.dataset.k].push(v); saveSettings(s); break; }
     case "export": {
@@ -747,7 +890,9 @@ main.addEventListener("change", e => {
   if (t.dataset.f === "category") { f.category = t.value; saveFilters(); render(); }
   else if (t.dataset.f === "sort") { f.sort = t.value; saveFilters(); render(); }
   else if (t.dataset.act === "agtasks") { state.agenda.withTasks = t.checked; ls.set("na.agtasks", t.checked); render(); }
-  else if (t.dataset.act === "me") { state.me = t.value; ls.set("na.me", t.value); }
+  else if (t.dataset.act === "me") { state.me = t.value; ls.set("na.me", t.value); if (state.dev && fbRef) fbRef.f.setDoc(devRef(), { me: t.value, name: P(t.value).name }, { merge: true }).catch(fail); }
+  else if (t.dataset.act === "np") setPref(t.dataset.k, t.checked);
+  else if (t.dataset.act === "npsel") setPref(t.dataset.k, t.value);
   else if (t.dataset.act === "pname" || t.dataset.act === "pcolor") {
     const s = clone(state.settings), p = s.people[+t.dataset.n];
     if (t.dataset.act === "pname") p.name = t.value.trim() || p.name; else p.color = t.value;
@@ -755,9 +900,16 @@ main.addEventListener("change", e => {
   }
   else if (t.id === "importFile" && t.files[0]) {
     t.files[0].text().then(txt => {
-      const data = JSON.parse(txt); const items = Array.isArray(data) ? data : data.items || [];
-      if (confirm(`Importer ${items.length} élément(s) ? (ils s'ajoutent à l'existant)`)) store.importItems(items).then(() => toast("Import terminé")).catch(fail);
-    }).catch(() => toast("Fichier invalide"));
+      const data = JSON.parse(txt); const all = Array.isArray(data) ? data : data.items || [];
+      const known = new Set(state.items.map(i => i.src).filter(Boolean));
+      const items = all.filter(i => !i.src || !known.has(i.src)), skipped = all.length - items.length;
+      if (!items.length) { toast("Tout est déjà importé."); return; }
+      if (!confirm(`Importer ${items.length} élément(s) ?${skipped ? ` (${skipped} déjà présents ignorés)` : ""}`)) return;
+      const s = clone(state.settings); let ch = false;
+      items.forEach(i => { if (i.category && i.type !== "shop" && !s.categories.includes(i.category)) { s.categories.push(i.category); ch = true; } });
+      if (ch) saveSettings(s);
+      store.importItems(items).then(() => toast(`Import terminé : ${items.length} élément(s)`)).catch(fail);
+    }).catch(() => toast("Fichier invalide")).finally(() => { t.value = ""; });
   }
 });
 main.addEventListener("keydown", e => {
