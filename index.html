@@ -84,6 +84,8 @@ textarea{min-height:70px;resize:vertical}
 .who::before{content:"";width:8px;height:8px;border-radius:50%;background:var(--c)}
 .tag{background:var(--soft);border-radius:6px;padding:1px 7px}
 .late-t{color:var(--danger);font-weight:600}
+.tag.shared{background:color-mix(in srgb,#0e9f9a 18%,transparent);color:#0b7f7b;font-weight:600}
+@media (prefers-color-scheme:dark){.tag.shared{color:#5fd6d0}}
 .prio{font-size:12px;font-weight:700;border-radius:5px;padding:0 5px;margin-right:4px;vertical-align:1px}
 .prio.p1{background:color-mix(in srgb,var(--warn) 22%,transparent);color:var(--warn)}
 .prio.p2{background:color-mix(in srgb,var(--danger) 20%,transparent);color:var(--danger)}
@@ -237,9 +239,38 @@ const DEFAULT_SETTINGS = {
     { id: "both", name: "Nous deux", color: "#8b5cf6" },
     { id: "kids", name: "Enfants", color: "#f59e0b" }
   ],
-  categories: ["Presta / MDR", "Concerts & répètes", "Maison", "Enfants", "Admin", "Rendez-vous", "Loisirs", "Anniversaires", "Animaux", "Fériés & congés"],
+  categories: ["Sombreffe", "Presta / MDR", "Concerts & répètes", "Maison", "Enfants", "Admin", "Rendez-vous", "Loisirs", "Anniversaires", "Animaux", "Fériés & congés"],
   shopCategories: ["Fruits & légumes", "Frais", "Boucherie", "Épicerie", "Boissons", "Surgelés", "Maison & hygiène", "Autre"]
 };
+
+/* ---------- espaces : chaque foyer a son agenda privé, seule la catégorie partagée est commune ---------- */
+const SHARED_CAT = "Sombreffe";
+const LOGIN_DOMAIN = "example.com";            // « claviem » se connecte comme claviem@example.com
+const SPACE_OF = {
+  "byk_kevin@hotmail.com": "famille",
+  "emeline999@hotmail.com": "famille",
+  "claviem999@hotmail.com": "claviem",   // Viviane
+  "claviem@skynet.be": "claviem"         // Claude
+};
+const SPACES = {
+  famille: { label: "Kevin & Emeline", items: ["items"], settings: ["meta", "settings"] },
+  claviem: { label: "Sombreffe", items: ["spaces", "claviem", "items"], settings: ["spaces", "claviem", "meta", "settings"] }
+};
+const SPACE_DEFAULTS = {
+  claviem: {
+    people: [
+      { id: "p1", name: "Claude", color: "#2f6fd6" },
+      { id: "p2", name: "Viviane", color: "#e0457b" },
+      { id: "both", name: "Nous deux", color: "#8b5cf6" },
+      { id: "kids", name: "Petits-enfants", color: "#f59e0b" }
+    ],
+    categories: ["Sombreffe", "Maison", "Rendez-vous", "Anniversaires", "Loisirs", "Admin"],
+    shopCategories: ["Fruits & légumes", "Frais", "Boucherie", "Épicerie", "Boissons", "Surgelés", "Maison & hygiène", "Autre"]
+  }
+};
+const SHARED_COLOR = "#0e9f9a";
+const spaceOf = email => SPACE_OF[(email || "").toLowerCase()] || "famille";
+const isShared = i => i && (i._col === "shared" || i.category === SHARED_CAT);
 
 /* ---------- utilitaires ---------- */
 const $ = (s, el = document) => el.querySelector(s);
@@ -334,18 +365,48 @@ async function loadFirebase() {
 }
 function createCloudStore(fb, user) {
   const { db, f } = fb;
-  const col = f.collection(db, "items"), setRef = f.doc(db, "meta", "settings");
-  const now = () => Date.now();
+  const space = spaceOf(user.email), sp = SPACES[space];
+  const own = f.collection(db, ...sp.items), shared = f.collection(db, "shared_items"), setRef = f.doc(db, ...sp.settings);
+  const now = () => Date.now(), by = user.email.toLowerCase();
+  const colOf = cat => cat === SHARED_CAT ? shared : own;
+  const find = id => state.items.find(i => i.id === id);
+  const strip = o => { const { id, _col, ...rest } = o; return rest; };
+  const label = o => o.category === SHARED_CAT ? { whoLabel: P(o.person).name, fromSpace: space } : {};
+  const defaults = () => clone(SPACE_DEFAULTS[space] || DEFAULT_SETTINGS);
+  let ownItems = [], sharedItems = [];
   return {
-    mode: "cloud",
-    onItems(cb, onErr) { return f.onSnapshot(col, { includeMetadataChanges: true }, snap => { setPending(snap.metadata.hasPendingWrites, snap.metadata.fromCache); cb(snap.docs.map(d => ({ id: d.id, ...d.data() }))); }, onErr); },
-    onSettings(cb, onErr) { return f.onSnapshot(setRef, s => cb(s.exists() ? { ...clone(DEFAULT_SETTINGS), ...s.data() } : clone(DEFAULT_SETTINGS)), onErr); },
-    add(it) { return f.addDoc(col, { ...it, createdAt: now(), updatedAt: now(), by: user.email }); },
-    update(id, p) { return f.updateDoc(f.doc(db, "items", id), { ...p, updatedAt: now(), by: user.email }); },
-    remove(id) { return f.deleteDoc(f.doc(db, "items", id)); },
-    async removeMany(ids) { for (let i = 0; i < ids.length; i += 400) { const b = f.writeBatch(db); ids.slice(i, i + 400).forEach(id => b.delete(f.doc(db, "items", id))); await b.commit(); } },
+    mode: "cloud", space,
+    onItems(cb, onErr) {
+      const emit = () => cb([...ownItems, ...sharedItems]);
+      const u1 = f.onSnapshot(own, { includeMetadataChanges: true }, snap => { setPending(snap.metadata.hasPendingWrites, snap.metadata.fromCache); ownItems = snap.docs.map(d => ({ id: d.id, ...d.data(), _col: "own" })); emit(); }, onErr);
+      const u2 = f.onSnapshot(shared, snap => { sharedItems = snap.docs.map(d => ({ id: d.id, ...d.data(), _col: "shared" })); emit(); }, onErr);
+      return () => { u1(); u2(); };
+    },
+    onSettings(cb, onErr) {
+      return f.onSnapshot(setRef, s => {
+        const st = s.exists() ? { ...defaults(), ...s.data() } : defaults();
+        if (!st.categories.includes(SHARED_CAT)) st.categories = [SHARED_CAT, ...st.categories];
+        cb(st);
+      }, onErr);
+    },
+    add(it) { const o = strip(it); return f.addDoc(colOf(o.category), { ...o, ...label(o), createdAt: now(), updatedAt: now(), by }); },
+    update(id, p) {
+      const cur = find(id); if (!cur) return Promise.resolve();
+      const curCol = cur._col === "shared" ? shared : own;
+      const next = { ...strip(cur), ...p };
+      if (p.category !== undefined && (p.category === SHARED_CAT) !== (cur._col === "shared")) {
+        const b = f.writeBatch(db);
+        b.set(f.doc(colOf(next.category)), { ...next, ...label(next), updatedAt: now(), by });
+        b.delete(f.doc(curCol, id));
+        return b.commit();
+      }
+      const extra = cur._col === "shared" && p.person !== undefined ? { whoLabel: P(p.person).name } : {};
+      return f.updateDoc(f.doc(curCol, id), { ...p, ...extra, updatedAt: now(), by });
+    },
+    remove(id) { const cur = find(id); return f.deleteDoc(f.doc(cur && cur._col === "shared" ? shared : own, id)); },
+    async removeMany(ids) { for (let i = 0; i < ids.length; i += 400) { const b = f.writeBatch(db); ids.slice(i, i + 400).forEach(id => { const cur = find(id); b.delete(f.doc(cur && cur._col === "shared" ? shared : own, id)); }); await b.commit(); } },
     saveSettings(s) { return f.setDoc(setRef, s); },
-    async importItems(items) { for (let i = 0; i < items.length; i += 400) { const b = f.writeBatch(db); items.slice(i, i + 400).forEach(it => { const { id, ...rest } = it; b.set(f.doc(col), rest); }); await b.commit(); } }
+    async importItems(items) { for (let i = 0; i < items.length; i += 400) { const b = f.writeBatch(db); items.slice(i, i + 400).forEach(it => { const o = strip(it); b.set(f.doc(colOf(o.category)), { ...o, ...label(o) }); }); await b.commit(); } }
   };
 }
 const fail = e => { console.error(e); toast(e?.code === "permission-denied" ? "Accès refusé : ce compte n'est pas autorisé." : "Erreur : " + (e?.message || e)); };
@@ -414,7 +475,7 @@ async function getMessagingToken() {
   if (!fgHooked) { msgM.onMessage(messaging, m => toast(`${m.notification?.title || ""} — ${m.notification?.body || ""}`, 6000)); fgHooked = true; }
   return token;
 }
-const devInfo = token => ({ token, email: state.user.email.toLowerCase(), name: P(state.me).name, me: state.me, ua: navigator.userAgent.slice(0, 140), updatedAt: Date.now() });
+const devInfo = token => ({ token, email: state.user.email.toLowerCase(), space: spaceOf(state.user.email), name: P(state.me).name, me: state.me, ua: navigator.userAgent.slice(0, 140), updatedAt: Date.now() });
 async function enableNotifs() {
   try {
     const perm = await Notification.requestPermission();
@@ -484,7 +545,7 @@ function renderLogin() {
   <div class="login"><form class="card" id="loginForm">
     <h2>Notre Agenda</h2>
     <div class="small">Connecte-toi avec ton email et ton mot de passe.</div>
-    <input type="email" name="email" placeholder="Email" autocomplete="username" required value="${esc(ls.get("na.lastEmail", ""))}">
+    <input type="text" name="email" placeholder="Email" autocomplete="username" autocapitalize="none" autocorrect="off" spellcheck="false" required value="${esc(ls.get("na.lastEmail", ""))}">
     <input type="password" name="pw" placeholder="Mot de passe" autocomplete="current-password" required>
     <div class="err" id="loginErr"></div>
     <button class="btn primary" type="submit">Se connecter</button>
@@ -495,7 +556,8 @@ function renderLogin() {
     e.preventDefault();
     const fd = new FormData(form);
     $("#loginErr").textContent = "";
-    try { ls.set("na.lastEmail", fd.get("email").trim()); await fbRef.a.signInWithEmailAndPassword(fbRef.auth, fd.get("email").trim(), fd.get("pw")); }
+    const typed = fd.get("email").trim().toLowerCase(), login = typed.includes("@") ? typed : `${typed}@${LOGIN_DOMAIN}`;
+    try { ls.set("na.lastEmail", typed); await fbRef.a.signInWithEmailAndPassword(fbRef.auth, login, fd.get("pw")); }
     catch (err) {
       const m = { "auth/invalid-credential": "Email ou mot de passe incorrect.", "auth/wrong-password": "Mot de passe incorrect.",
         "auth/user-not-found": "Compte inconnu.", "auth/too-many-requests": "Trop d'essais, réessaie dans quelques minutes.",
@@ -521,7 +583,7 @@ function renderDenied() {
 /* ---------- filtres ---------- */
 function matchPerson(i) {
   const sel = state.filters.persons;
-  if (!sel.length) return true;
+  if (!sel.length || i._col === "shared") return true;
   return sel.includes(i.person) || (i.person === "both" && (sel.includes("p1") || sel.includes("p2")));
 }
 function matchCommon(i) {
@@ -557,7 +619,8 @@ function render() {
 }
 
 function rowHTML(i, opts = {}) {
-  const p = P(i.person), today = todayStr();
+  const sh = i._col === "shared";
+  const p = sh ? { name: i.whoLabel || "—", color: SHARED_COLOR } : P(i.person), today = todayStr();
   const late = i.type === "task" && i.status !== "done" && i.date && i.date < today;
   const check = i.type === "event" ? "" :
     `<button class="check st-${i.status || "todo"}" data-act="toggle" data-id="${i.id}" aria-label="Cocher">${i.status === "done" ? "✓" : ""}</button>`;
@@ -565,7 +628,7 @@ function rowHTML(i, opts = {}) {
   const prio = i.type === "task" && +i.priority > 0 && i.status !== "done" ? `<span class="prio p${+i.priority}">${+i.priority === 2 ? "URGENT" : "!"}</span>` : "";
   const meta = [];
   if (i.type !== "shop") meta.push(`<span class="who" style="--c:${esc(p.color)}">${esc(p.name)}</span>`);
-  if (i.category && !opts.noCat) meta.push(`<span class="tag">${esc(i.category)}</span>`);
+  if (i.category && !opts.noCat) meta.push(`<span class="tag${i.category === SHARED_CAT ? " shared" : ""}">${i.category === SHARED_CAT ? "🏡 " : ""}${esc(i.category)}</span>`);
   if (i.qty) meta.push(`<span>${esc(i.qty)}</span>`);
   if (i.date && !opts.time) meta.push(`<span class="${late ? "late-t" : ""}">${i.date === today ? "Aujourd'hui" : esc(fmtDay(i.date))}${i.time ? " · " + esc(i.time) : ""}</span>`);
   if (i.type === "event" && i.repeat?.freq) meta.push(`<span class="rep" title="Répétition">↻ ${esc(REPEAT_LABEL[i.repeat.freq + ":" + (i.repeat.interval || 1)] || "Répété")}</span>`);
@@ -603,7 +666,7 @@ function renderTasks() {
     groups = order.map(k => [k, list.filter(i => key(i) === k)]).filter(g => g[1].length);
   } else if (f.sort === "person" || f.sort === "cat") {
     const m = new Map();
-    list.forEach(i => { const k = f.sort === "person" ? P(i.person).name : (i.category || "Sans catégorie"); if (!m.has(k)) m.set(k, []); m.get(k).push(i); });
+    list.forEach(i => { const k = f.sort === "person" ? (i._col === "shared" ? (i.whoLabel || "—") : P(i.person).name) : (i.category || "Sans catégorie"); if (!m.has(k)) m.set(k, []); m.get(k).push(i); });
     groups = [...m];
   } else groups = [["", list]];
 
@@ -664,7 +727,7 @@ function dayConflicts(evs) {
 function dayItems(dateStr) {
   const evs = state.items.filter(i => ((i.type === "event" && occursOn(i, dateStr)) || (state.agenda.withTasks && i.type === "task" && i.date === dateStr)) && matchCommon(i));
   evs.sort((a, b) => (a.time || "").localeCompare(b.time || "") || (a.type === "event" ? -1 : 1));
-  const allEvents = state.items.filter(i => i.type === "event" && i.time && occursOn(i, dateStr));
+  const allEvents = state.items.filter(i => i.type === "event" && i._col !== "shared" && i.time && occursOn(i, dateStr));
   return { evs, conf: dayConflicts(allEvents) };
 }
 function dayBlock(ds, withHeader = true) {
@@ -697,7 +760,7 @@ function renderAgenda() {
     const d = addDays(gs, n), ds = ymd(d);
     if (n === 35 && d.getMonth() !== a.getMonth()) break;
     const { evs, conf } = dayItems(ds);
-    const dots = evs.slice(0, 6).map(i => `<i style="--c:${esc(P(i.person).color)}"></i>`).join("");
+    const dots = evs.slice(0, 6).map(i => `<i style="--c:${esc(i._col === "shared" ? SHARED_COLOR : P(i.person).color)}"></i>`).join("");
     cells += `<button class="cell ${d.getMonth() !== a.getMonth() ? "out" : ""} ${ds === todayStr() ? "today" : ""} ${ds === ag.sel ? "sel" : ""} ${conf.ids.size ? "conf" : ""}" data-act="agsel" data-d="${ds}">
       <span class="n">${d.getDate()}</span><span class="dots">${dots}</span></button>`;
   }
@@ -735,7 +798,9 @@ function renderSettings() {
   return `
   <div class="sect"><h2>Compte</h2><div class="card">
     ${DEMO ? `<div>Mode démo (pas de compte). Les données restent sur cet appareil.</div>` :
-      `<div>Connecté : <b>${esc(state.user?.email)}</b></div><button class="btn" data-act="logout">Se déconnecter</button>`}
+      `<div>Connecté : <b>${esc((state.user?.email || "").replace("@" + LOGIN_DOMAIN, ""))}</b> · agenda « ${esc(SPACES[spaceOf(state.user?.email)].label)} »</div>
+       <div class="small">La catégorie <b>🏡 ${SHARED_CAT}</b> est partagée avec l'autre foyer. Tout le reste est privé.</div>
+       <button class="btn" data-act="logout">Se déconnecter</button>`}
     <label class="lab">Sur cet appareil, je suis
       <select data-act="me">${["p1", "p2"].map(id => `<option value="${id}" ${state.me === id ? "selected" : ""}>${esc(P(id).name)}</option>`).join("")}</select></label>
     <div class="small">Sert à pré-remplir « Pour qui » quand tu ajoutes quelque chose.</div>
