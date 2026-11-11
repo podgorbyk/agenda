@@ -41,6 +41,7 @@ main{padding:0 16px 24px;max-width:720px;margin:0 auto}
 /* tab bar */
 nav.tabs{position:fixed;left:0;right:0;bottom:0;z-index:30;background:var(--card);border-top:1px solid var(--line);
   display:flex;padding:6px 6px calc(6px + env(safe-area-inset-bottom))}
+nav.tabs button[hidden]{display:none}
 nav.tabs button{flex:1;border:0;background:none;padding:6px 0;display:flex;flex-direction:column;align-items:center;gap:2px;font-size:11px;color:var(--mute)}
 nav.tabs button svg{width:24px;height:24px}
 nav.tabs button.on{color:var(--accent);font-weight:600}
@@ -112,10 +113,46 @@ textarea{min-height:70px;resize:vertical}
 .month{display:grid;grid-template-columns:repeat(7,minmax(0,1fr));gap:3px;margin-bottom:12px}
 .cell{min-width:0}
 .month .dn{font-size:11px;color:var(--mute);text-align:center;padding:4px 0;font-weight:600}
-.cell{aspect-ratio:1/1.05;border:0;border-radius:9px;background:var(--card);padding:4px 2px;display:flex;flex-direction:column;align-items:center;gap:3px;font-size:14px;box-shadow:var(--shadow)}
+.cell{min-height:74px;border:0;border-radius:9px;background:var(--card);padding:4px 2px 3px;display:flex;flex-direction:column;align-items:stretch;gap:2px;font-size:14px;box-shadow:var(--shadow);text-align:left;overflow:hidden}
+.cell .n{align-self:center;font-weight:600;font-size:13px}
+.bars{display:flex;flex-direction:column;gap:2px;min-width:0}
+.bars b{display:block;font-weight:500;font-size:9.5px;line-height:13px;height:13px;padding:0 3px;border-radius:3px;background:color-mix(in srgb,var(--c) 22%,transparent);color:var(--ink);border-left:2px solid var(--c);white-space:nowrap;overflow:hidden;text-overflow:clip}
+.bars b.dn{opacity:.45;text-decoration:line-through}
+.bars em{font-style:normal;font-size:9.5px;color:var(--mute);padding-left:3px}
+.dayopen{grid-column:1/-1;background:var(--soft);border-radius:12px;padding:8px;margin:2px 0 6px;animation:op .18s ease-out}
+@keyframes op{from{opacity:0;transform:translateY(-4px)}to{opacity:1;transform:none}}
+.dayopen .dayh{padding-top:2px}
+.check.bill{border:0;font-size:17px;background:none}
+.convert{font-size:13px}
+.kpis{display:grid;grid-template-columns:1fr 1fr;gap:8px;margin:4px 0 12px}
+.kpi{background:var(--card);border-radius:14px;box-shadow:var(--shadow);padding:10px 12px}
+.kpi .v{font-size:22px;font-weight:700;letter-spacing:-.01em;font-variant-numeric:tabular-nums}
+.kpi .l{font-size:12px;color:var(--mute)}
+.amt{font-weight:700;font-variant-numeric:tabular-nums;white-space:nowrap}
+.frow2{display:flex;align-items:center;gap:8px}
+.frow2 .body{flex:1;min-width:0}
+.pill{font-size:12px;font-weight:600;border-radius:999px;padding:1px 8px;background:var(--soft)}
+.pill.late{background:color-mix(in srgb,var(--danger) 18%,transparent);color:var(--danger)}
+.pill.soon{background:color-mix(in srgb,var(--warn) 20%,transparent);color:var(--warn)}
+.pill.unpaid{background:color-mix(in srgb,var(--warn) 20%,transparent);color:var(--warn)}
+.pill.odd{background:color-mix(in srgb,var(--danger) 15%,transparent);color:var(--danger)}
+.sug{border:1px dashed color-mix(in srgb,#16a34a 55%,transparent);background:color-mix(in srgb,#16a34a 7%,var(--card));border-radius:14px;padding:10px 12px;margin-bottom:8px;font-size:14px}
+.sug .frow{margin-top:8px}
+.fbar{display:grid;grid-template-columns:52px 1fr 78px;gap:8px;align-items:center;padding:7px 12px;border-bottom:1px solid var(--line);font-size:14px}
+.fbar:last-child{border-bottom:0}
+.fbar .track{display:block;height:14px;background:var(--soft);border-radius:7px;overflow:hidden}
+.fbar .fill{display:block;height:100%;min-width:2px;background:#16a34a;border-radius:7px}
+.fbar.heavy .fill{background:var(--danger)}
+.fbar.heavy .m,.fbar.heavy .amt{color:var(--danger)}
+.fbar .why{grid-column:2/-1;font-size:12px;color:var(--mute);margin-top:-4px}
+#finForm{padding:14px 16px calc(16px + env(safe-area-inset-bottom));display:grid;gap:12px}
+#finForm[data-kind=invoice] .f-bill{display:none}
+#finForm[data-kind=bill] .f-inv{display:none}
+#finForm.nodue .f-due{display:none}
+#finForm.nocustom .f-custom{display:none}
 .cell.out{opacity:.4}
 .cell.today .n{background:var(--accent);color:var(--accent-ink);border-radius:50%;width:24px;height:24px;display:grid;place-items:center}
-.cell.sel{outline:2px solid var(--accent)}
+.cell.sel{outline:2px solid var(--accent);outline-offset:-2px}
 .cell.conf{box-shadow:inset 0 0 0 2px var(--danger)}
 .dots{display:flex;gap:2px;flex-wrap:wrap;justify-content:center;max-width:30px}
 .dots i{width:6px;height:6px;border-radius:50%;background:var(--c)}
@@ -177,6 +214,7 @@ dialog{overflow-x:hidden;max-width:min(560px,100vw)}
   <button data-view="tasks"><svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round"><path d="M9 6h11M9 12h11M9 18h11"/><path d="M3.5 6l1 1 2-2M3.5 12l1 1 2-2M3.5 18l1 1 2-2"/></svg>Tâches</button>
   <button data-view="agenda"><svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round"><rect x="3" y="5" width="18" height="16" rx="2"/><path d="M3 10h18M8 3v4M16 3v4"/></svg>Agenda</button>
   <button data-view="shop"><svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round"><path d="M3 4h2l2.4 11.2a2 2 0 0 0 2 1.6h7.7a2 2 0 0 0 2-1.5L21 8H6"/><circle cx="10" cy="20" r="1.3"/><circle cx="17" cy="20" r="1.3"/></svg>Courses</button>
+  <button data-view="finance" id="tabFinance" hidden><svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><rect x="2.5" y="6" width="19" height="13" rx="2"/><path d="M2.5 10h19"/><path d="M16 15h2"/></svg>Finance</button>
   <button data-view="settings"><svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round"><circle cx="12" cy="12" r="3"/><path d="M19.4 15a1.7 1.7 0 0 0 .3 1.8l.1.1a2 2 0 1 1-2.8 2.8l-.1-.1a1.7 1.7 0 0 0-1.8-.3 1.7 1.7 0 0 0-1 1.5V21a2 2 0 1 1-4 0v-.1a1.7 1.7 0 0 0-1.1-1.5 1.7 1.7 0 0 0-1.8.3l-.1.1a2 2 0 1 1-2.8-2.8l.1-.1a1.7 1.7 0 0 0 .3-1.8 1.7 1.7 0 0 0-1.5-1H3a2 2 0 1 1 0-4h.1a1.7 1.7 0 0 0 1.5-1.1 1.7 1.7 0 0 0-.3-1.8l-.1-.1a2 2 0 1 1 2.8-2.8l.1.1a1.7 1.7 0 0 0 1.8.3H9a1.7 1.7 0 0 0 1-1.5V3a2 2 0 1 1 4 0v.1a1.7 1.7 0 0 0 1 1.5 1.7 1.7 0 0 0 1.8-.3l.1-.1a2 2 0 1 1 2.8 2.8l-.1.1a1.7 1.7 0 0 0-.3 1.8V9a1.7 1.7 0 0 0 1.5 1H21a2 2 0 1 1 0 4h-.1a1.7 1.7 0 0 0-1.5 1z"/></svg>Réglages</button>
 </nav>
 
@@ -207,6 +245,31 @@ dialog{overflow-x:hidden;max-width:min(560px,100vw)}
       <button type="button" class="btn danger" id="edDel">Supprimer</button>
       <button type="button" class="btn" id="edDup">Dupliquer</button>
       <button type="button" class="btn" id="edSkip">Retirer ce jour</button>
+      <button type="button" class="btn convert" id="edConvert">→ Tâche</button>
+      <button type="submit" class="btn primary">Enregistrer</button>
+    </div>
+  </form>
+</dialog>
+
+<dialog id="finEd">
+  <form id="finForm" data-kind="invoice" autocomplete="off">
+    <div class="sheet-head"><h2 id="finTitle">Facture</h2><button type="button" class="x" id="finClose" aria-label="Fermer">×</button></div>
+    <input type="text" name="label" class="f-bill" placeholder="Libellé (ex. Assurance auto)">
+    <input type="text" name="supplier" placeholder="Fournisseur (ex. Engie)">
+    <div class="grid2">
+      <label>Montant (€)<input type="text" name="amount" inputmode="decimal" placeholder="0,00" required></label>
+      <label>Catégorie<select name="fcat"></select></label>
+      <label class="f-inv">Date de la facture<input type="date" name="date"></label>
+      <label class="f-inv">Statut<select name="paid"><option value="1">Payée</option><option value="0">À payer</option></select></label>
+      <label class="f-inv f-due">Échéance<input type="date" name="due"></label>
+      <label class="f-inv">Rattacher à<select name="billId"></select></label>
+      <label class="f-bill">Revient tous les<select name="months"><option value="1">Mois</option><option value="2">2 mois</option><option value="3">3 mois</option><option value="6">6 mois</option><option value="12">An</option><option value="custom">Autre…</option></select></label>
+      <label class="f-bill f-custom">Nombre de mois<input type="number" name="customMonths" min="1" max="60" value="4"></label>
+      <label class="f-bill">Prochaine échéance<input type="date" name="next"></label>
+    </div>
+    <textarea name="fnote" placeholder="Note (n° de contrat, référence…)"></textarea>
+    <div class="actions">
+      <button type="button" class="btn danger" id="finDel">Supprimer</button>
       <button type="submit" class="btn primary">Enregistrer</button>
     </div>
   </form>
@@ -244,7 +307,10 @@ const DEFAULT_SETTINGS = {
 };
 
 /* ---------- espaces : chaque foyer a son agenda privé, seule la catégorie partagée est commune ---------- */
+const APP_VERSION = "2.0.1 — 11 nov. 2026";
 const SHARED_CAT = "Sombreffe";
+const FIN_CAT = "Finance", FIN_COLOR = "#16a34a";
+const FIN_CATS = ["Énergie", "Eau", "Assurance", "Télécom & internet", "Impôts & taxes", "Voiture", "École & enfants", "Santé", "Maison", "Banque & crédit", "Abonnements", "Autre"];
 const LOGIN_DOMAIN = "example.com";            // « claviem » se connecte comme claviem@example.com
 const SPACE_OF = {
   "byk_kevin@hotmail.com": "famille",
@@ -300,7 +366,8 @@ const state = {
   view: ls.get("na.view", "tasks"),
   me: ls.get("na.me", "p1"),
   filters: Object.assign({ persons: [], category: "", status: "open", sort: "due", q: "" }, ls.get("na.filters", {})),
-  agenda: { mode: ls.get("na.agmode", "week"), anchor: new Date(), sel: todayStr(), withTasks: ls.get("na.agtasks", true) }
+  agenda: { mode: ls.get("na.agmode", "week"), anchor: new Date(), sel: todayStr(), open: null, withTasks: ls.get("na.agtasks", true) },
+  fin: [], finTab: ls.get("na.fintab", "upcoming"), finYear: String(new Date().getFullYear()), finCat: ""
 };
 state.filters.q = "";
 let store = null;
@@ -313,8 +380,9 @@ function createLocalStore() {
   const KEY = "na.demo";
   let data = ls.get(KEY, null);
   if (!data) data = { items: demoItems(), settings: clone(DEFAULT_SETTINGS) };
-  const iL = new Set(), sL = new Set();
-  const emit = () => { ls.set(KEY, data); iL.forEach(f => f(data.items.slice())); sL.forEach(f => f(data.settings)); };
+  if (!data.fin) data.fin = demoFinance();
+  const iL = new Set(), sL = new Set(), fL = new Set();
+  const emit = () => { ls.set(KEY, data); iL.forEach(f => f(data.items.slice())); sL.forEach(f => f(data.settings)); fL.forEach(f => f(data.fin.slice())); };
   const now = () => Date.now();
   return {
     mode: "demo",
@@ -325,8 +393,25 @@ function createLocalStore() {
     async remove(id) { data.items = data.items.filter(x => x.id !== id); emit(); },
     async removeMany(ids) { const s = new Set(ids); data.items = data.items.filter(x => !s.has(x.id)); emit(); },
     async saveSettings(s) { data.settings = s; emit(); },
-    async importItems(items) { items.forEach(i => data.items.push({ ...i, id: uid() })); emit(); }
+    async importItems(items) { items.forEach(i => data.items.push({ ...i, id: uid() })); emit(); },
+    onFinance(cb) { fL.add(cb); cb(data.fin.slice()); },
+    async finAdd(o) { const id = uid(); data.fin.push({ ...o, id, createdAt: now(), updatedAt: now() }); emit(); return id; },
+    async finUpdate(id, p) { const x = data.fin.find(f => f.id === id); if (x) Object.assign(x, p, { updatedAt: now() }); emit(); },
+    async finRemove(id) { data.fin = data.fin.filter(f => f.id !== id); emit(); }
   };
+}
+function demoFinance() {
+  const t = new Date(), d = n => ymd(addDays(t, n)), m = n => ymd(new Date(t.getFullYear(), t.getMonth() + n, Math.min(t.getDate(), 28)));
+  const inv = (supplier, amount, date, category, extra = {}) => ({ id: uid(), kind: "invoice", supplier, amount, date, category, paid: true, due: "", note: "", billId: "", ...extra });
+  return [
+    { id: "b1", kind: "bill", label: "Assurance auto", supplier: "Ethias", amount: 640, months: 12, next: m(2), category: "Assurance", active: true, note: "" },
+    { id: "b2", kind: "bill", label: "Électricité (acompte)", supplier: "Engie", amount: 145, months: 1, next: d(5), category: "Énergie", active: true, note: "" },
+    { id: "b3", kind: "bill", label: "Précompte immobilier", supplier: "SPF Finances", amount: 1180, months: 12, next: m(4), category: "Impôts & taxes", active: true, note: "" },
+    { id: "b4", kind: "bill", label: "Eau", supplier: "SWDE", amount: 210, months: 3, next: d(-2), category: "Eau", active: true, note: "" },
+    inv("Proximus", 79.9, m(-3), "Télécom & internet"), inv("Proximus", 79.9, m(-2), "Télécom & internet"), inv("Proximus", 81.5, m(-1), "Télécom & internet"),
+    inv("Garage Dupont", 380, m(-4), "Voiture"), inv("Engie", 145, m(-2), "Énergie", { billId: "b2" }), inv("Engie", 145, m(-1), "Énergie", { billId: "b2" }),
+    inv("Engie", 201, d(-3), "Énergie"), inv("Vivaqua", 64, d(-1), "Eau", { paid: false, due: d(9) })
+  ];
 }
 function demoItems() {
   const t = new Date(), d = n => ymd(addDays(t, n)), now = Date.now();
@@ -406,7 +491,11 @@ function createCloudStore(fb, user) {
     remove(id) { const cur = find(id); return f.deleteDoc(f.doc(cur && cur._col === "shared" ? shared : own, id)); },
     async removeMany(ids) { for (let i = 0; i < ids.length; i += 400) { const b = f.writeBatch(db); ids.slice(i, i + 400).forEach(id => { const cur = find(id); b.delete(f.doc(cur && cur._col === "shared" ? shared : own, id)); }); await b.commit(); } },
     saveSettings(s) { return f.setDoc(setRef, s); },
-    async importItems(items) { for (let i = 0; i < items.length; i += 400) { const b = f.writeBatch(db); items.slice(i, i + 400).forEach(it => { const o = strip(it); b.set(f.doc(colOf(o.category)), { ...o, ...label(o) }); }); await b.commit(); } }
+    async importItems(items) { for (let i = 0; i < items.length; i += 400) { const b = f.writeBatch(db); items.slice(i, i + 400).forEach(it => { const o = strip(it); b.set(f.doc(colOf(o.category)), { ...o, ...label(o) }); }); await b.commit(); } },
+    onFinance(cb, onErr) { return space === "famille" ? f.onSnapshot(f.collection(db, "finance"), snap => cb(snap.docs.map(d => ({ id: d.id, ...d.data() }))), onErr) : () => {}; },
+    async finAdd(o) { const r = await f.addDoc(f.collection(db, "finance"), { ...strip(o), createdAt: now(), updatedAt: now(), by }); return r.id; },
+    finUpdate(id, p) { return f.updateDoc(f.doc(db, "finance", id), { ...strip(p), updatedAt: now(), by }); },
+    finRemove(id) { return f.deleteDoc(f.doc(db, "finance", id)); }
   };
 }
 const fail = e => { console.error(e); toast(e?.code === "permission-denied" ? "Accès refusé : ce compte n'est pas autorisé." : "Erreur : " + (e?.message || e)); };
@@ -446,13 +535,20 @@ function startApp() {
     if (e?.code === "permission-denied") renderDenied(); else fail(e);
   };
   unsub.push(store.onSettings(s => { state.settings = s; if (state.view !== "settings") render(); }, onErr));
-  unsub.push(store.onItems(items => { state.items = items; if (state.view !== "settings") render(); }, onErr));
+  let cleaned = false;
+  unsub.push(store.onItems(items => {
+    state.items = items;
+    if (!cleaned && items.length) { cleaned = true; setTimeout(purgeOldDone, 3000); }
+    if (state.view !== "settings") render();
+  }, onErr));
+  $("#tabFinance").hidden = !financeOn();
+  if (financeOn() && store.onFinance) unsub.push(store.onFinance(list => { state.fin = list; if (state.view !== "settings") render(); }, e => console.warn("finance", e)));
   render(); paintSync();
   if (store.mode === "cloud") { watchDevice(); refreshToken(); }
 }
 
 /* ---------- notifications (Firebase Cloud Messaging) ---------- */
-const NOTIF_DEFAULTS = { remind: true, leads: [60], allDay: "veille20", persons: [], categories: [], onAdd: true, onEdit: false, onDone: false, types: ["event", "task", "shop"], quiet: true };
+const NOTIF_DEFAULTS = { finRemind: true, remind: true, leads: [60], allDay: "veille20", persons: [], categories: [], onAdd: true, onEdit: false, onDone: false, types: ["event", "task", "shop"], quiet: true };
 const isStandalone = () => matchMedia("(display-mode: standalone)").matches || navigator.standalone === true;
 const isIOS = () => /iPhone|iPad|iPod/.test(navigator.userAgent);
 let msgM = null, messaging = null, devUnsub = null, fgHooked = false;
@@ -530,6 +626,7 @@ function notifSection() {
       ${sw("onAdd", "Quand il/elle ajoute")}${sw("onEdit", "Quand il/elle modifie")}${sw("onDone", "Quand il/elle coche")}
       <div class="chips">${chip("types", "event", "📅 Agenda")}${chip("types", "task", "✅ Tâches")}${chip("types", "shop", "🛒 Courses")}</div>
       ${sw("quiet", "Silence entre 22 h et 7 h")}
+      ${store && store.space === "famille" ? `<div class="nsub">💶 Paiements à venir</div>${sw("finRemind", "Rappels : début du mois, 7 j avant, 3 j avant et le jour J (9 h)")}` : ""}
       <div class="nsub">🎯 Seulement pour… <span class="small">(rien de sélectionné = tout)</span></div>
       <div class="chips">${state.settings.people.map(pp => chip("persons", pp.id, pp.name, pp.color)).join("")}</div>
       <div class="chips">${state.settings.categories.map(c => chip("categories", c, c)).join("")}</div>
@@ -598,7 +695,8 @@ function personChips() {
     `<button class="chip ${state.filters.persons.includes(p.id) ? "on" : ""}" data-act="fperson" data-id="${p.id}" style="--c:${esc(p.color)}"><i></i>${esc(p.name)}</button>`).join("")}</div>`;
 }
 function catSelect() {
-  return `<select data-f="category"><option value="">Toutes catégories</option>${state.settings.categories.map(c =>
+  const cats = financeOn() && !state.settings.categories.includes(FIN_CAT) ? [...state.settings.categories, FIN_CAT] : state.settings.categories;
+  return `<select data-f="category"><option value="">Toutes catégories</option>${cats.map(c =>
     `<option ${state.filters.category === c ? "selected" : ""}>${esc(c)}</option>`).join("")}</select>`;
 }
 
@@ -607,10 +705,11 @@ function render() {
   const act = document.activeElement, keepId = act?.id, pos = act?.selectionStart;
   document.querySelectorAll("#tabs button").forEach(b => b.classList.toggle("on", b.dataset.view === state.view));
   $("#fab").hidden = state.view === "settings";
-  const titles = { tasks: "Tâches", agenda: "Agenda", shop: "Courses", settings: "Réglages" };
+  const titles = { tasks: "Tâches", agenda: "Agenda", shop: "Courses", finance: "Finance", settings: "Réglages" };
   $("#hTitle").textContent = titles[state.view];
   const banner = DEMO ? `<div class="banner">Mode démo : les données restent sur cet appareil. Configure Firebase (voir le guide) pour partager avec ta femme.</div>` : "";
-  const v = { tasks: renderTasks, agenda: renderAgenda, shop: renderShop, settings: renderSettings }[state.view] || renderTasks;
+  if (state.view === "finance" && !financeOn()) state.view = "tasks";
+  const v = { tasks: renderTasks, agenda: renderAgenda, shop: renderShop, finance: renderFinance, settings: renderSettings }[state.view] || renderTasks;
   $("#main").innerHTML = banner + v();
   if (keepId && document.getElementById(keepId)) {
     const el = document.getElementById(keepId); el.focus();
@@ -621,13 +720,15 @@ function render() {
 function rowHTML(i, opts = {}) {
   const sh = i._col === "shared";
   const p = sh ? { name: i.whoLabel || "—", color: SHARED_COLOR } : P(i.person), today = todayStr();
-  const late = i.type === "task" && i.status !== "done" && i.date && i.date < today;
-  const check = i.type === "event" ? "" :
-    `<button class="check st-${i.status || "todo"}" data-act="toggle" data-id="${i.id}" aria-label="Cocher">${i.status === "done" ? "✓" : ""}</button>`;
+  const isDone = isItemDone(i, opts.occ);
+  const late = i.type === "task" && !isDone && i.date && i.date < today;
+  const check = i.type === "bill" ? `<span class="check bill" aria-hidden="true">💶</span>` :
+    `<button class="check st-${isDone ? "done" : (i.status || "todo")}" data-act="toggle" data-id="${i.id}"${opts.occ ? ` data-d="${opts.occ}"` : ""} aria-label="Cocher">${isDone ? "✓" : ""}</button>`;
   const time = opts.time ? `<div class="time">${i.time ? esc(i.time) + (i.endTime ? `<br>${esc(i.endTime)}` : "") : "Journée"}</div>` : "";
   const prio = i.type === "task" && +i.priority > 0 && i.status !== "done" ? `<span class="prio p${+i.priority}">${+i.priority === 2 ? "URGENT" : "!"}</span>` : "";
   const meta = [];
-  if (i.type !== "shop") meta.push(`<span class="who" style="--c:${esc(p.color)}">${esc(p.name)}</span>`);
+  if (i.type === "bill") meta.push(`<span><b>${esc(eur(i.amount))}</b>${i.supplier ? " · " + esc(i.supplier) : ""}</span>`);
+  else if (i.type !== "shop") meta.push(`<span class="who" style="--c:${esc(p.color)}">${esc(p.name)}</span>`);
   if (i.category && !opts.noCat) meta.push(`<span class="tag${i.category === SHARED_CAT ? " shared" : ""}">${i.category === SHARED_CAT ? "🏡 " : ""}${esc(i.category)}</span>`);
   if (i.qty) meta.push(`<span>${esc(i.qty)}</span>`);
   if (i.date && !opts.time) meta.push(`<span class="${late ? "late-t" : ""}">${i.date === today ? "Aujourd'hui" : esc(fmtDay(i.date))}${i.time ? " · " + esc(i.time) : ""}</span>`);
@@ -635,9 +736,9 @@ function rowHTML(i, opts = {}) {
   if (i.type === "event" && i.endDate && i.endDate > i.date) meta.push(`<span>→ ${esc(fmtDay(i.endDate))}</span>`);
   if (i.status === "doing") meta.push(`<span style="color:var(--warn);font-weight:600">En cours</span>`);
   if (i.notes) meta.push(`<span title="Notes">📝</span>`);
-  return `<div class="row ${i.status === "done" ? "done" : ""} ${opts.conf ? "isconf" : ""}" style="--c:${i.type === "shop" ? "transparent" : esc(p.color)}">
+  return `<div class="row ${isDone ? "done" : ""} ${opts.conf ? "isconf" : ""}" style="--c:${i.type === "shop" ? "transparent" : i.type === "bill" ? FIN_COLOR : esc(p.color)}">
     ${time}${check}
-    <div class="body" data-act="edit" data-id="${i.id}"${opts.occ ? ` data-d="${opts.occ}"` : ""}>
+    <div class="body" data-act="${i.type === "bill" ? "editbill" : "edit"}" data-id="${i.type === "bill" ? i.billId : i.id}"${opts.occ ? ` data-d="${opts.occ}"` : ""}>
       <div class="title">${prio}${esc(i.title)}</div>
       ${meta.length ? `<div class="meta">${meta.join("")}</div>` : ""}
     </div></div>`;
@@ -724,8 +825,20 @@ function dayConflicts(evs) {
   }
   return { ids, garde, double };
 }
+function isItemDone(i, occ) {
+  if (i.type === "event" && i.repeat?.freq) return !!occ && (i.doneDates || []).includes(occ);
+  return i.status === "done";
+}
+const DONE_KEEP_MS = 30 * 864e5;
+/* RDV cochés : grisés 30 jours, puis effacés définitivement */
+function purgeOldDone() {
+  const ids = state.items.filter(hiddenDone).map(i => i.id);
+  if (ids.length) store.removeMany(ids).then(() => console.log(`${ids.length} rendez-vous cochés depuis plus de 30 jours effacés`)).catch(e => console.warn("purge", e));
+}
+function hiddenDone(i) { return i.type === "event" && !i.repeat?.freq && i.status === "done" && i.doneAt && Date.now() - i.doneAt > DONE_KEEP_MS; }
 function dayItems(dateStr) {
-  const evs = state.items.filter(i => ((i.type === "event" && occursOn(i, dateStr)) || (state.agenda.withTasks && i.type === "task" && i.date === dateStr)) && matchCommon(i));
+  const evs = state.items.filter(i => ((i.type === "event" && occursOn(i, dateStr) && !hiddenDone(i)) || (state.agenda.withTasks && i.type === "task" && i.date === dateStr)) && matchCommon(i));
+  if (!state.filters.category || state.filters.category === FIN_CAT) evs.push(...billsOn(dateStr));
   evs.sort((a, b) => (a.time || "").localeCompare(b.time || "") || (a.type === "event" ? -1 : 1));
   const allEvents = state.items.filter(i => i.type === "event" && i._col !== "shared" && i.time && occursOn(i, dateStr));
   return { evs, conf: dayConflicts(allEvents) };
@@ -755,21 +868,30 @@ function renderAgenda() {
   }
   const a = ag.anchor, first = new Date(a.getFullYear(), a.getMonth(), 1), gs = startOfWeek(first);
   const lbl = first.toLocaleDateString("fr-BE", { month: "long", year: "numeric" });
-  let cells = "";
-  for (let n = 0; n < 42; n++) {
-    const d = addDays(gs, n), ds = ymd(d);
-    if (n === 35 && d.getMonth() !== a.getMonth()) break;
-    const { evs, conf } = dayItems(ds);
-    const dots = evs.slice(0, 6).map(i => `<i style="--c:${esc(i._col === "shared" ? SHARED_COLOR : P(i.person).color)}"></i>`).join("");
-    cells += `<button class="cell ${d.getMonth() !== a.getMonth() ? "out" : ""} ${ds === todayStr() ? "today" : ""} ${ds === ag.sel ? "sel" : ""} ${conf.ids.size ? "conf" : ""}" data-act="agsel" data-d="${ds}">
-      <span class="n">${d.getDate()}</span><span class="dots">${dots}</span></button>`;
+  let grid = "";
+  for (let w = 0; w < 6; w++) {
+    const wkStart = addDays(gs, w * 7);
+    if (w === 5 && wkStart.getMonth() !== a.getMonth()) break;
+    let openDs = null;
+    for (let n = 0; n < 7; n++) {
+      const d = addDays(wkStart, n), ds = ymd(d);
+      const { evs, conf } = dayItems(ds);
+      const max = 3, shown = evs.slice(0, max);
+      const bars = shown.map(i => `<b class="${isItemDone(i, ds) ? "dn" : ""}" style="--c:${esc(i.type === "bill" ? FIN_COLOR : i._col === "shared" ? SHARED_COLOR : P(i.person).color)}">${i.time && i.type !== "bill" ? esc(i.time.replace(":00", "h").replace(":", "h")) + " " : ""}${esc(i.title)}</b>`).join("")
+        + (evs.length > max ? `<em>+${evs.length - max}</em>` : "");
+      if (ds === ag.open) openDs = ds;
+      grid += `<button class="cell ${d.getMonth() !== a.getMonth() ? "out" : ""} ${ds === todayStr() ? "today" : ""} ${ds === ag.open ? "sel" : ""} ${conf.ids.size ? "conf" : ""}" data-act="agsel" data-d="${ds}" aria-expanded="${ds === ag.open}">
+        <span class="n">${d.getDate()}</span><span class="bars">${bars}</span></button>`;
+    }
+    if (openDs) {
+      const L = fmtDay(openDs, { weekday: "long", day: "numeric", month: "long" });
+      grid += `<div class="dayopen"><div class="dayh">${esc(L.charAt(0).toUpperCase() + L.slice(1))}<button class="add" data-act="addOn" data-d="${openDs}" aria-label="Ajouter ce jour">+</button></div>${dayBlock(openDs, false)}</div>`;
+    }
   }
-  const selLabel = fmtDay(ag.sel, { weekday: "long", day: "numeric", month: "long" });
   return `${filters}
     <div class="agbar"><button class="navb" data-act="agprev">‹</button><div class="lbl">${esc(lbl.charAt(0).toUpperCase() + lbl.slice(1))}</div><button class="navb" data-act="agnext">›</button><button class="btn small" data-act="agtoday">Auj.</button></div>
-    <div class="month">${["L", "M", "M", "J", "V", "S", "D"].map(x => `<div class="dn">${x}</div>`).join("")}${cells}</div>
-    <div class="dayh">${esc(selLabel.charAt(0).toUpperCase() + selLabel.slice(1))}<button class="add" data-act="addOn" data-d="${ag.sel}">+</button></div>
-    ${dayBlock(ag.sel, false)}`;
+    <div class="month" id="monthGrid">${["L", "M", "M", "J", "V", "S", "D"].map(x => `<div class="dn">${x}</div>`).join("")}${grid}</div>
+    <div class="small" style="text-align:center">Appuie sur un jour pour le déplier · glisse pour changer de mois</div>`;
 }
 
 /* --- Courses --- */
@@ -816,7 +938,231 @@ function renderSettings() {
     <button class="btn danger" data-act="purgeDone">Supprimer toutes les tâches faites</button>
     <input type="file" id="importFile" accept="application/json" hidden>
   </div></div>
-  <div class="small" style="text-align:center">Astuce iPhone : Safari → bouton Partager → « Sur l'écran d'accueil ».</div>`;
+  <div class="small" style="text-align:center">Astuce iPhone : Safari → bouton Partager → « Sur l'écran d'accueil ».</div>
+  <div class="small" style="text-align:center;margin-top:6px">Version ${esc(APP_VERSION)}${location.pathname.endsWith("beta.html") ? " · <b>BÊTA</b>" : ""}</div>`;
+}
+
+/* ---------- Finance (factures, à venir, prévision) ---------- */
+const financeOn = () => DEMO || (store && store.space === "famille");
+const eur = n => (+n || 0).toLocaleString("fr-BE", { style: "currency", currency: "EUR", maximumFractionDigits: (+n % 1) ? 2 : 0 });
+const parseAmt = v => { const n = parseFloat(String(v || "").replace(/\s|€/g, "").replace(",", ".")); return isFinite(n) ? Math.round(n * 100) / 100 : 0; };
+const normSup = s => String(s || "").toLowerCase().normalize("NFD").replace(/[̀-ͯ]/g, "").replace(/[^a-z0-9]+/g, " ").trim();
+function addMonthsStr(ds, n) {
+  const d = parseYmd(ds), day = d.getDate();
+  const x = new Date(d.getFullYear(), d.getMonth() + n, 1);
+  const last = new Date(x.getFullYear(), x.getMonth() + 1, 0).getDate();
+  x.setDate(Math.min(day, last)); return ymd(x);
+}
+const MONTHS_LABEL = { 1: "chaque mois", 2: "tous les 2 mois", 3: "tous les 3 mois", 6: "tous les 6 mois", 12: "chaque année" };
+const monthsLabel = m => MONTHS_LABEL[m] || `tous les ${m} mois`;
+const bills = () => state.fin.filter(f => f.kind === "bill" && f.active !== false);
+const invoices = () => state.fin.filter(f => f.kind === "invoice");
+function billOccurrences(b, fromDs, toDs) {
+  const out = []; if (!b.next || !b.months) return out;
+  let ds = b.next, k = 0;
+  while (ds <= toDs && k < 400) { if (ds >= fromDs) out.push(ds); k++; ds = addMonthsStr(b.next, k * b.months); }
+  return out;
+}
+function billsOn(ds) {
+  if (!financeOn()) return [];
+  return bills().filter(b => billOccurrences(b, ds, ds).length).map(b => ({
+    id: `bill_${b.id}_${ds}`, billId: b.id, type: "bill", title: b.label || b.supplier, amount: b.amount, supplier: b.label ? b.supplier : "",
+    date: ds, time: "", category: FIN_CAT, person: "both", status: b.next < todayStr() && ds === b.next ? "todo" : ""
+  }));
+}
+function guessFinCat(sup) {
+  const t = normSup(sup);
+  const map = [[/engie|luminus|totalenergies|mega|eneco|electr|gaz|mazout|pellet/, "Énergie"], [/swde|vivaqua|eau|inbw|cile/, "Eau"],
+    [/ethias|axa|ag insurance|\bag\b|ap assurance|baloise|allianz|dkv|assur|mutuelle|mutualite|solidaris|partenamut/, "Assurance"],
+    [/proximus|orange|telenet|voo|base|scarlet|internet|gsm/, "Télécom & internet"], [/spf|precompte|impot|taxe|commune|region|tva/, "Impôts & taxes"],
+    [/garage|controle|pneu|carburant|essence|diesel|bmw|ford|auto|voiture|mazda/, "Voiture"], [/ecole|academie|stage|creche|cantine|danse|gym/, "École & enfants"],
+    [/pharma|medecin|dentiste|kine|hopital|docteur/, "Santé"], [/banque|belfius|ing|kbc|bnp|credit|pret|emprunt/, "Banque & crédit"],
+    [/netflix|spotify|disney|amazon|abonnement|youtube|apple|google/, "Abonnements"], [/bois|leroy|brico|ikea|plombier|chauffagiste|toiture/, "Maison"]];
+  for (const [re, c] of map) if (re.test(t)) return c;
+  return "Autre";
+}
+function unusual(inv) {
+  const prev = invoices().filter(x => x.id !== inv.id && normSup(x.supplier) === normSup(inv.supplier) && x.date < inv.date);
+  if (prev.length < 2) return 0;
+  const avg = prev.reduce((a, x) => a + (+x.amount || 0), 0) / prev.length;
+  return avg > 0 && inv.amount > avg * 1.3 ? Math.round((inv.amount / avg - 1) * 100) : 0;
+}
+function suggestions() {
+  const dismissed = ls.get("na.sugDismiss", []), today = todayStr();
+  const linked = new Set(bills().map(b => normSup(b.supplier || b.label)));
+  const groups = {};
+  invoices().forEach(i => { const k = normSup(i.supplier); if (!k || i.billId) return; (groups[k] = groups[k] || []).push(i); });
+  const out = [];
+  for (const [k, arr] of Object.entries(groups)) {
+    if (arr.length < 2 || linked.has(k) || dismissed.includes(k)) continue;
+    arr.sort((a, b) => a.date.localeCompare(b.date));
+    const gaps = arr.slice(1).map((x, n) => (parseYmd(x.date) - parseYmd(arr[n].date)) / 864e5).filter(g => g > 0).sort((a, b) => a - b);
+    if (!gaps.length) continue;
+    const med = gaps[Math.floor(gaps.length / 2)];
+    if (med < 20) continue;
+    const months = [1, 2, 3, 4, 6, 12].reduce((best, m) => Math.abs(m * 30.44 - med) < Math.abs(best * 30.44 - med) ? m : best, 1);
+    const recent = arr.slice(-3), amount = Math.round(recent.reduce((a, x) => a + (+x.amount || 0), 0) / recent.length * 100) / 100;
+    let next = addMonthsStr(arr[arr.length - 1].date, months), g = 0;
+    while (next < today && g++ < 50) next = addMonthsStr(next, months);
+    out.push({ key: k, supplier: arr[arr.length - 1].supplier, category: arr[arr.length - 1].category || guessFinCat(k), months, amount, next, count: arr.length });
+  }
+  return out;
+}
+function forecast() {
+  const now = new Date(), months = [];
+  for (let n = 0; n < 12; n++) {
+    const a = new Date(now.getFullYear(), now.getMonth() + n, 1), b = new Date(now.getFullYear(), now.getMonth() + n + 1, 0);
+    const from = ymd(a), to = ymd(b), lines = [];
+    bills().forEach(x => billOccurrences(x, n === 0 ? ymd(new Date(now.getFullYear(), now.getMonth(), 1)) : from, to).forEach(() => lines.push({ label: x.label || x.supplier, amount: +x.amount || 0 })));
+    invoices().filter(i => !i.paid && i.due && i.due >= from && i.due <= to).forEach(i => lines.push({ label: i.supplier, amount: +i.amount || 0 }));
+    months.push({ label: a.toLocaleDateString("fr-BE", { month: "short" }) + (a.getMonth() === 0 || n === 0 ? " " + String(a.getFullYear()).slice(2) : ""), total: lines.reduce((s, l) => s + l.amount, 0), lines });
+  }
+  const avg = months.reduce((s, m) => s + m.total, 0) / 12;
+  months.forEach(m => m.heavy = m.total > 0 && m.total > avg * 1.5);
+  return { months, avg, max: Math.max(1, ...months.map(m => m.total)) };
+}
+const provision = () => bills().reduce((s, b) => s + (+b.amount || 0) / (b.months || 12), 0);
+function dueLabel(ds) {
+  const n = Math.round((parseYmd(ds) - parseYmd(todayStr())) / 864e5);
+  if (n < 0) return [`en retard de ${-n} j`, "late"];
+  if (n === 0) return ["aujourd'hui", "late"];
+  if (n <= 7) return [`dans ${n} j`, "soon"];
+  return [fmtDay(ds), ""];
+}
+function renderFinance() {
+  const tab = state.finTab;
+  const seg = (v, l) => `<button class="${tab === v ? "on" : ""}" data-act="fintab" data-v="${v}">${l}</button>`;
+  const head = `<div class="seg" style="margin:4px 0 12px">${seg("upcoming", "À venir")}${seg("invoices", "Factures")}${seg("forecast", "Prévision")}</div>`;
+  const today = todayStr(), in30 = ymd(addDays(new Date(), 30));
+  if (tab === "invoices") {
+    const year = state.finYear, cat = state.finCat;
+    const years = [...new Set([String(new Date().getFullYear()), ...invoices().map(i => (i.date || "").slice(0, 4)).filter(Boolean)])].sort().reverse();
+    let list = invoices().filter(i => (i.date || "").startsWith(year) && (!cat || i.category === cat)).sort((a, b) => (b.date || "").localeCompare(a.date || ""));
+    const total = list.reduce((s, i) => s + (+i.amount || 0), 0), unpaid = invoices().filter(i => !i.paid);
+    const byMonth = {}; list.forEach(i => { const k = (i.date || "").slice(0, 7); (byMonth[k] = byMonth[k] || []).push(i); });
+    const row = i => { const odd = unusual(i); return `<div class="row" style="--c:${FIN_COLOR}"><div class="body frow2" data-act="editinv" data-id="${i.id}">
+      <div class="body"><div class="title">${esc(i.supplier || "—")}</div><div class="meta"><span>${esc(fmtDay(i.date))}</span>${i.category ? `<span class="tag">${esc(i.category)}</span>` : ""}
+      ${!i.paid ? `<span class="pill unpaid">À payer${i.due ? " · " + esc(dueLabel(i.due)[0]) : ""}</span>` : ""}${odd ? `<span class="pill odd">⚠ +${odd} % vs habitude</span>` : ""}${i.note ? "<span>📝</span>" : ""}</div></div>
+      <div class="amt">${esc(eur(i.amount))}</div></div></div>`; };
+    return `${head}
+      <div class="quick"><input type="text" id="quickInv" placeholder="Ex. : Engie 412,50" enterkeyhint="done"><button class="btn primary" data-act="quickInv">OK</button></div>
+      <div class="frow" style="margin-bottom:10px"><select data-f="finYear">${years.map(y => `<option ${y === year ? "selected" : ""}>${y}</option>`).join("")}</select>
+        <select data-f="finCat"><option value="">Toutes catégories</option>${FIN_CATS.map(c => `<option ${c === cat ? "selected" : ""}>${esc(c)}</option>`).join("")}</select></div>
+      <div class="kpis"><div class="kpi"><div class="v">${esc(eur(total))}</div><div class="l">Total ${esc(year)}${cat ? " · " + esc(cat) : ""}</div></div>
+        <div class="kpi"><div class="v" style="${unpaid.length ? "color:var(--warn)" : ""}">${esc(eur(unpaid.reduce((s, i) => s + (+i.amount || 0), 0)))}</div><div class="l">${unpaid.length} facture(s) à payer</div></div></div>
+      ${Object.keys(byMonth).length ? Object.entries(byMonth).map(([k, arr]) => `<div class="group"><span>${esc(parseYmd(k + "-01").toLocaleDateString("fr-BE", { month: "long", year: "numeric" }))}</span><span>${esc(eur(arr.reduce((s, i) => s + (+i.amount || 0), 0)))}</span></div>
+        <div class="card">${arr.map(row).join("")}</div>`).join("") : `<div class="empty">Aucune facture ${esc(year)}.<br><small>Encode-les au fur et à mesure avec le champ au-dessus ou le bouton +</small></div>`}`;
+  }
+  if (tab === "forecast") {
+    const fc = forecast(), heavy = fc.months.filter(m => m.heavy);
+    const yr = String(new Date().getFullYear()), cats = {};
+    invoices().filter(i => (i.date || "").startsWith(yr)).forEach(i => cats[i.category || "Autre"] = (cats[i.category || "Autre"] || 0) + (+i.amount || 0));
+    const cmax = Math.max(1, ...Object.values(cats));
+    return `${head}
+      <div class="kpis"><div class="kpi"><div class="v">${esc(eur(Math.ceil(provision())))}</div><div class="l">À mettre de côté / mois</div></div>
+        <div class="kpi"><div class="v">${esc(eur(Math.round(fc.avg)))}</div><div class="l">Moyenne prévue / mois</div></div></div>
+      ${heavy.length ? `<div class="conf" style="margin-bottom:10px">⚠ Mois lourds : ${heavy.map(m => esc(m.label)).join(", ")}</div>` : ""}
+      <div class="group"><span>12 prochains mois</span><span>${esc(eur(fc.months.reduce((s, m) => s + m.total, 0)))}</span></div>
+      <div class="card">${fc.months.map(m => `<div class="fbar ${m.heavy ? "heavy" : ""}"><span class="m">${esc(m.label)}</span><span class="track"><span class="fill" style="width:${(m.total / fc.max * 100).toFixed(1)}%"></span></span><span class="amt" style="text-align:right">${esc(eur(Math.round(m.total)))}</span>
+        ${m.heavy || (m.lines.length && m.lines.length <= 3) ? `<span class="why">${esc(m.lines.sort((a, b) => b.amount - a.amount).slice(0, 4).map(l => `${l.label} ${eur(l.amount)}`).join(" · "))}</span>` : ""}</div>`).join("")}</div>
+      <div class="small" style="margin:8px 2px 0">Basé sur tes charges « À venir » et les factures à payer. Plus tu en encodes, plus la prévision est juste.</div>
+      ${Object.keys(cats).length ? `<div class="group"><span>Dépensé en ${yr} par catégorie</span><span>${esc(eur(Object.values(cats).reduce((a, b) => a + b, 0)))}</span></div>
+      <div class="card">${Object.entries(cats).sort((a, b) => b[1] - a[1]).map(([c, v]) => `<div class="fbar" style="grid-template-columns:110px 1fr 78px"><span class="m">${esc(c)}</span><span class="track"><span class="fill" style="width:${(v / cmax * 100).toFixed(1)}%"></span></span><span class="amt" style="text-align:right">${esc(eur(Math.round(v)))}</span></div>`).join("")}</div>` : ""}`;
+  }
+  // À venir
+  const list = bills().slice().sort((a, b) => (a.next || "").localeCompare(b.next || ""));
+  const soon = list.filter(b => b.next && b.next <= in30).reduce((s, b) => s + (+b.amount || 0) * billOccurrences(b, "0000-00-00", in30).length, 0);
+  const sugs = suggestions();
+  return `${head}
+    <div class="kpis"><div class="kpi"><div class="v">${esc(eur(Math.round(soon)))}</div><div class="l">Dans les 30 prochains jours</div></div>
+      <div class="kpi"><div class="v">${esc(eur(Math.ceil(provision())))}</div><div class="l">À mettre de côté / mois</div></div></div>
+    ${sugs.map(g => `<div class="sug">💡 <b>${esc(g.supplier)}</b> revient ${esc(monthsLabel(g.months))} (${g.count} factures, ~${esc(eur(g.amount))}).<br>Créer une charge « à venir », prochaine le ${esc(fmtDay(g.next))} ?
+      <div class="frow"><button class="btn small primary" data-act="sugok" data-k="${esc(g.key)}">Créer</button><button class="btn small" data-act="sugno" data-k="${esc(g.key)}">Non merci</button></div></div>`).join("")}
+    ${list.length ? `<div class="card">${list.map(b => { const [lbl, cls] = dueLabel(b.next); return `<div class="row" style="--c:${FIN_COLOR}"><div class="body frow2">
+      <div class="body" data-act="editbill" data-id="${b.id}"><div class="title">${esc(b.label || b.supplier)}</div><div class="meta"><span class="pill ${cls}">${esc(lbl)}</span><span>${esc(monthsLabel(b.months))}</span>${b.category ? `<span class="tag">${esc(b.category)}</span>` : ""}</div></div>
+      <div style="text-align:right"><div class="amt">${esc(eur(b.amount))}</div><button class="btn small" data-act="billpaid" data-id="${b.id}" style="margin-top:4px">Payée ✓</button></div></div></div>`; }).join("")}</div>`
+      : `<div class="empty">Aucune charge à venir.<br><small>Ajoute tes grosses charges récurrentes (assurances, précompte, eau, entretien chaudière…) : elles apparaîtront dans l'agenda et dans la prévision.</small></div>`}
+    <button class="btn" data-act="newbill" style="width:100%;margin-top:12px">+ Nouvelle charge à venir</button>`;
+}
+
+/* --- éditeur Finance --- */
+const finEd = $("#finEd"), finForm = $("#finForm");
+let finEditing = null;
+function fillFinCats(cur) { const opts = [...FIN_CATS]; if (cur && !opts.includes(cur)) opts.push(cur); finForm.fcat.innerHTML = opts.map(c => `<option ${c === cur ? "selected" : ""}>${esc(c)}</option>`).join(""); }
+function syncFinForm() {
+  finForm.classList.toggle("nodue", finForm.paid.value === "1");
+  finForm.classList.toggle("nocustom", finForm.months.value !== "custom");
+}
+function openInvoice(inv, preset = {}) {
+  finEditing = inv ? inv.id : null;
+  const o = inv || { supplier: "", amount: "", date: todayStr(), category: "", paid: true, due: "", note: "", billId: "", ...preset };
+  finForm.dataset.kind = "invoice"; $("#finTitle").textContent = inv ? "Modifier la facture" : "Nouvelle facture";
+  finForm.supplier.value = o.supplier || ""; finForm.amount.value = o.amount !== "" && o.amount != null ? String(o.amount).replace(".", ",") : "";
+  finForm.date.value = o.date || todayStr(); finForm.paid.value = o.paid === false ? "0" : "1"; finForm.due.value = o.due || ""; finForm.fnote.value = o.note || "";
+  fillFinCats(o.category || guessFinCat(o.supplier));
+  finForm.billId.innerHTML = `<option value="">— aucune —</option>` + bills().map(b => `<option value="${b.id}" ${b.id === o.billId ? "selected" : ""}>${esc(b.label || b.supplier)}</option>`).join("");
+  $("#finDel").hidden = !inv; syncFinForm(); finEd.showModal();
+}
+function openBill(b, preset = {}) {
+  finEditing = b ? b.id : null;
+  const o = b || { label: "", supplier: "", amount: "", months: 12, next: "", category: "", note: "", ...preset };
+  finForm.dataset.kind = "bill"; $("#finTitle").textContent = b ? "Charge à venir" : "Nouvelle charge à venir";
+  finForm.label.value = o.label || ""; finForm.supplier.value = o.supplier || ""; finForm.amount.value = o.amount !== "" && o.amount != null ? String(o.amount).replace(".", ",") : "";
+  const std = ["1", "2", "3", "6", "12"].includes(String(o.months));
+  finForm.months.value = std ? String(o.months) : "custom"; finForm.customMonths.value = std ? 4 : o.months;
+  finForm.next.value = o.next || ""; finForm.fnote.value = o.note || "";
+  fillFinCats(o.category || guessFinCat(o.supplier || o.label));
+  $("#finDel").hidden = !b; syncFinForm(); finEd.showModal();
+}
+finForm.paid.onchange = syncFinForm; finForm.months.onchange = syncFinForm;
+finForm.supplier.addEventListener("change", () => { if (!finEditing) fillFinCats(guessFinCat(finForm.supplier.value || finForm.label.value)); });
+$("#finClose").onclick = () => finEd.close();
+finEd.addEventListener("click", e => { if (e.target === finEd) finEd.close(); });
+async function afterInvoiceLinked(billId, inv) {
+  const b = state.fin.find(x => x.id === billId); if (!b) return;
+  const linked = invoices().filter(i => i.billId === billId && i.id !== inv.id).concat([inv]).sort((a, c) => (a.date || "").localeCompare(c.date || "")).slice(-3);
+  const est = Math.round(linked.reduce((s, i) => s + (+i.amount || 0), 0) / linked.length * 100) / 100;
+  const next = b.next ? addMonthsStr(b.next, b.months || 12) : addMonthsStr(inv.date, b.months || 12);
+  await store.finUpdate(billId, { next, amount: est });
+  toast(`« ${b.label || b.supplier} » : prochaine échéance le ${fmtDay(next)} (~${eur(est)})`, 4000);
+}
+finForm.onsubmit = async e => {
+  e.preventDefault();
+  const amount = parseAmt(finForm.amount.value);
+  try {
+    if (finForm.dataset.kind === "invoice") {
+      const o = { kind: "invoice", supplier: finForm.supplier.value.trim(), amount, date: finForm.date.value || todayStr(), category: finForm.fcat.value,
+        paid: finForm.paid.value === "1", due: finForm.paid.value === "1" ? "" : finForm.due.value, note: finForm.fnote.value.trim(), billId: finForm.billId.value };
+      if (!o.supplier && !amount) return;
+      const was = finEditing ? state.fin.find(x => x.id === finEditing) : null;
+      finEd.close();
+      if (finEditing) await store.finUpdate(finEditing, o); else { const id = await store.finAdd(o); o.id = id; }
+      if (o.billId && (!was || was.billId !== o.billId)) await afterInvoiceLinked(o.billId, { ...o, id: o.id || finEditing });
+      const odd = unusual({ ...o, id: o.id || finEditing }); if (odd) toast(`⚠ ${o.supplier} : ${odd} % plus cher que d'habitude`, 5000);
+    } else {
+      const months = finForm.months.value === "custom" ? Math.max(1, +finForm.customMonths.value || 1) : +finForm.months.value;
+      const o = { kind: "bill", label: finForm.label.value.trim(), supplier: finForm.supplier.value.trim(), amount, months, next: finForm.next.value || todayStr(),
+        category: finForm.fcat.value, note: finForm.fnote.value.trim(), active: true };
+      if (!o.label && !o.supplier) return;
+      finEd.close();
+      if (finEditing) await store.finUpdate(finEditing, o); else await store.finAdd(o);
+    }
+  } catch (err) { fail(err); }
+};
+$("#finDel").onclick = () => { if (finEditing && confirm("Supprimer ?")) { store.finRemove(finEditing).catch(fail); finEd.close(); } };
+function quickInvoice() {
+  const inp = $("#quickInv"), t = inp.value.trim(); if (!t) return;
+  const m = t.match(/^(.*?)[\s:]*(\d+(?:[ .]\d{3})*(?:[.,]\d{1,2})?)\s*€?\s*$/);
+  if (!m) { openInvoice(null, { supplier: t }); inp.value = ""; return; }
+  const supplier = m[1].trim(), amount = parseAmt(m[2].replace(/[ .](?=\d{3}\b)/g, ""));
+  const o = { kind: "invoice", supplier, amount, date: todayStr(), category: guessFinCat(supplier), paid: true, due: "", note: "", billId: "" };
+  const bill = bills().find(b => normSup(b.supplier) && normSup(b.supplier) === normSup(supplier));
+  store.finAdd(o).then(async id => {
+    toast(`${supplier || "Facture"} · ${eur(amount)} ajoutée`);
+    if (bill && confirm(`Rattacher à la charge « ${bill.label || bill.supplier} » et passer à l'échéance suivante ?`)) { await store.finUpdate(id, { billId: bill.id }); await afterInvoiceLinked(bill.id, { ...o, id, billId: bill.id }); }
+    const odd = unusual({ ...o, id }); if (odd) toast(`⚠ ${supplier} : ${odd} % plus cher que d'habitude`, 5000);
+  }).catch(fail);
+  inp.value = "";
 }
 
 /* ---------- éditeur ---------- */
@@ -848,6 +1194,8 @@ function openEditor(item, defaults = {}, occ = null) {
   form.repeat.value = rv; form.until.value = it.repeat?.until || "";
   form.classList.toggle("norepeat", !rv);
   $("#edSkip").hidden = !(item && item.repeat?.freq && occ);
+  $("#edConvert").hidden = !(item && (item.type === "event" || item.type === "task"));
+  $("#edConvert").textContent = item && item.type === "event" ? "→ Convertir en tâche" : "→ Mettre à l'agenda";
   edPerson = it.person || state.me; paintPersons();
   form.dataset.type = it.type; fillCats(it.type, it.category); setType(it.type); form.category.value = it.category || form.category.value;
   ed.showModal();
@@ -872,6 +1220,17 @@ $("#edType").onclick = e => { const b = e.target.closest("button"); if (b) setTy
 $("#edPerson").onclick = e => { const b = e.target.closest("button"); if (b) { edPerson = b.dataset.id; paintPersons(); } };
 $("#edClose").onclick = () => ed.close();
 form.repeat.onchange = () => form.classList.toggle("norepeat", !form.repeat.value);
+$("#edConvert").onclick = () => {
+  const it = state.items.find(i => i.id === editing); if (!it) return;
+  if (it.type === "event") {
+    store.update(editing, { type: "task", repeat: null, endDate: "", endTime: "", status: it.status === "done" ? "done" : "todo", priority: it.priority || 0 }).catch(fail);
+    toast("Converti en tâche ✓ (onglet Tâches)");
+  } else {
+    store.update(editing, { type: "event", date: it.date || todayStr(), status: it.status === "done" ? "done" : "todo", doneAt: it.status === "done" ? Date.now() : null }).catch(fail);
+    toast("Mis à l'agenda ✓" + (it.date ? "" : " (aujourd'hui — change la date si besoin)"));
+  }
+  ed.close();
+};
 $("#edSkip").onclick = () => {
   const it = state.items.find(i => i.id === editing); if (!it || !editingOcc) return;
   store.update(editing, { exdates: [...(it.exdates || []), editingOcc] }).catch(fail); ed.close(); toast("Retiré pour ce jour uniquement");
@@ -890,7 +1249,8 @@ $("#edDup").onclick = () => { const o = readForm(); store.add({ ...o, title: o.t
 /* ---------- interactions ---------- */
 $("#tabs").onclick = e => { const b = e.target.closest("button"); if (!b) return; state.view = b.dataset.view; ls.set("na.view", state.view); scrollTo(0, 0); render(); };
 $("#fab").onclick = () => {
-  if (state.view === "agenda") openEditor(null, { type: "event", date: state.agenda.mode === "month" ? state.agenda.sel : todayStr() });
+  if (state.view === "agenda") openEditor(null, { type: "event", date: state.agenda.mode === "month" ? (state.agenda.open || todayStr()) : todayStr() });
+  else if (state.view === "finance") openInvoice(null);
   else if (state.view === "shop") openEditor(null, { type: "shop", category: ls.get("na.shopcat", "Autre") });
   else openEditor(null, { type: "task" });
 };
@@ -913,20 +1273,40 @@ main.addEventListener("click", e => {
   const act = el.dataset.act, id = el.dataset.id, f = state.filters, ag = state.agenda;
   switch (act) {
     case "edit": openEditor(state.items.find(i => i.id === id), {}, el.dataset.d || null); break;
-    case "toggle": { const it = state.items.find(i => i.id === id); if (it) store.update(id, { status: it.status === "done" ? "todo" : "done" }).catch(fail); break; }
+    case "toggle": {
+      const it = state.items.find(i => i.id === id); if (!it) break;
+      if (it.type === "event" && it.repeat?.freq) {
+        const d = el.dataset.d; if (!d) { toast("Ouvre-le depuis l'agenda pour cocher ce jour-là"); break; }
+        const dd = it.doneDates || [];
+        store.update(id, { doneDates: dd.includes(d) ? dd.filter(x => x !== d) : [...dd, d] }).catch(fail);
+      } else {
+        const done = it.status === "done";
+        store.update(id, { status: done ? "todo" : "done", doneAt: done ? null : Date.now() }).catch(fail);
+        if (!done && it.type === "event") toast("Coché ✓ — reste grisé 30 jours, puis s'efface");
+      }
+      break;
+    }
     case "fperson": f.persons = f.persons.includes(id) ? f.persons.filter(x => x !== id) : [...f.persons, id]; saveFilters(); render(); break;
     case "fstatus": f.status = el.dataset.v; saveFilters(); render(); break;
     case "quickTask": quickAdd("task"); break;
     case "quickShop": quickAdd("shop"); break;
     case "clearShop": store.removeMany(state.items.filter(i => i.type === "shop" && i.status === "done").map(i => i.id)).catch(fail); break;
+    case "fintab": state.finTab = el.dataset.v; ls.set("na.fintab", state.finTab); render(); break;
+    case "quickInv": quickInvoice(); break;
+    case "editinv": openInvoice(state.fin.find(x => x.id === id)); break;
+    case "editbill": { const b = state.fin.find(x => x.id === id); if (b) openBill(b); break; }
+    case "newbill": openBill(null); break;
+    case "billpaid": { const b = state.fin.find(x => x.id === id); if (b) openInvoice(null, { supplier: b.supplier || b.label, amount: b.amount, category: b.category, billId: b.id }); break; }
+    case "sugok": { const g = suggestions().find(x => x.key === el.dataset.k); if (g) openBill(null, { label: g.supplier, supplier: g.supplier, amount: g.amount, months: g.months, next: g.next, category: g.category }); break; }
+    case "sugno": { const d = ls.get("na.sugDismiss", []); d.push(el.dataset.k); ls.set("na.sugDismiss", d); render(); break; }
     case "agmode": ag.mode = el.dataset.v; ls.set("na.agmode", ag.mode); render(); break;
     case "agprev": case "agnext": {
       const dir = act === "agnext" ? 1 : -1;
       ag.anchor = ag.mode === "week" ? addDays(ag.anchor, 7 * dir) : new Date(ag.anchor.getFullYear(), ag.anchor.getMonth() + dir, 1);
       render(); break;
     }
-    case "agtoday": ag.anchor = new Date(); ag.sel = todayStr(); render(); break;
-    case "agsel": ag.sel = el.dataset.d; render(); break;
+    case "agtoday": ag.anchor = new Date(); ag.sel = todayStr(); ag.open = ag.mode === "month" ? todayStr() : null; render(); break;
+    case "agsel": ag.sel = el.dataset.d; ag.open = ag.open === el.dataset.d ? null : el.dataset.d; render(); break;
     case "addOn": openEditor(null, { type: "event", date: el.dataset.d }); break;
     case "logout": if (devUnsub) { devUnsub(); devUnsub = null; } fbRef.a.signOut(fbRef.auth); break;
     case "notifOn": enableNotifs(); break;
@@ -936,7 +1316,7 @@ main.addEventListener("click", e => {
     case "delcat": { const s = clone(state.settings); s[el.dataset.k].splice(+el.dataset.n, 1); saveSettings(s); break; }
     case "addcat": { const inp = $("#new-" + el.dataset.k), v = inp.value.trim(); if (!v) return; const s = clone(state.settings); if (!s[el.dataset.k].includes(v)) s[el.dataset.k].push(v); saveSettings(s); break; }
     case "export": {
-      const blob = new Blob([JSON.stringify({ exportedAt: new Date().toISOString(), settings: state.settings, items: state.items }, null, 2)], { type: "application/json" });
+      const blob = new Blob([JSON.stringify({ exportedAt: new Date().toISOString(), version: APP_VERSION, settings: state.settings, items: state.items, finance: state.fin }, null, 2)], { type: "application/json" });
       const a = document.createElement("a"); a.href = URL.createObjectURL(blob); a.download = `agenda-sauvegarde-${todayStr()}.json`; a.click(); break;
     }
     case "import": $("#importFile").click(); break;
@@ -947,12 +1327,23 @@ main.addEventListener("click", e => {
   }
 });
 function saveSettings(s) { state.settings = s; store.saveSettings(s).catch(fail); render(); }
+let swipeX = null, swipeY = null;
+main.addEventListener("touchstart", e => { if (e.target.closest("#monthGrid")) { swipeX = e.touches[0].clientX; swipeY = e.touches[0].clientY; } else swipeX = null; }, { passive: true });
+main.addEventListener("touchend", e => {
+  if (swipeX == null) return;
+  const dx = e.changedTouches[0].clientX - swipeX, dy = e.changedTouches[0].clientY - swipeY; swipeX = null;
+  if (Math.abs(dx) > 60 && Math.abs(dx) > Math.abs(dy) * 1.5) {
+    const ag = state.agenda; ag.anchor = new Date(ag.anchor.getFullYear(), ag.anchor.getMonth() + (dx < 0 ? 1 : -1), 1); ag.open = null; render();
+  }
+}, { passive: true });
 main.addEventListener("input", e => {
   if (e.target.dataset.f === "q") { state.filters.q = e.target.value; render(); }
 });
 main.addEventListener("change", e => {
   const t = e.target, f = state.filters;
   if (t.dataset.f === "category") { f.category = t.value; saveFilters(); render(); }
+  else if (t.dataset.f === "finYear") { state.finYear = t.value; render(); }
+  else if (t.dataset.f === "finCat") { state.finCat = t.value; render(); }
   else if (t.dataset.f === "sort") { f.sort = t.value; saveFilters(); render(); }
   else if (t.dataset.act === "agtasks") { state.agenda.withTasks = t.checked; ls.set("na.agtasks", t.checked); render(); }
   else if (t.dataset.act === "me") { state.me = t.value; ls.set("na.me", t.value); if (state.dev && fbRef) fbRef.f.setDoc(devRef(), { me: t.value, name: P(t.value).name }, { merge: true }).catch(fail); }
@@ -980,6 +1371,7 @@ main.addEventListener("change", e => {
 main.addEventListener("keydown", e => {
   if (e.key !== "Enter") return;
   if (e.target.id === "quickTask") { e.preventDefault(); quickAdd("task"); }
+  else if (e.target.id === "quickInv") { e.preventDefault(); quickInvoice(); }
   else if (e.target.id === "quickShop") { e.preventDefault(); quickAdd("shop"); }
   else if (e.target.id?.startsWith("new-")) { e.preventDefault(); e.target.nextElementSibling.click(); }
 });
