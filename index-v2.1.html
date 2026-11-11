@@ -1,0 +1,1504 @@
+<!doctype html>
+<html lang="fr">
+<head>
+<meta charset="utf-8">
+<meta name="viewport" content="width=device-width, initial-scale=1, viewport-fit=cover">
+<title>Notre Agenda</title>
+<meta name="theme-color" content="#f7e9e6">
+<meta name="apple-mobile-web-app-capable" content="yes">
+<meta name="mobile-web-app-capable" content="yes">
+<meta name="apple-mobile-web-app-status-bar-style" content="default">
+<meta name="apple-mobile-web-app-title" content="Agenda">
+<link rel="apple-touch-icon" href="apple-touch-icon.png">
+<link rel="icon" type="image/png" href="icon-192.png">
+<link rel="manifest" href="manifest.webmanifest">
+<style>
+:root{
+  --bg:#f5f4f0;--card:#ffffff;--ink:#1c1c1f;--mute:#6d6c72;--line:#e5e3dd;--soft:#efede8;
+  --accent:#5b4bdb;--accent-ink:#ffffff;--danger:#d63a3a;--warn:#d98300;--ok:#1f9d55;
+  --shadow:0 1px 2px rgba(0,0,0,.05),0 4px 14px rgba(0,0,0,.05);
+}
+@media (prefers-color-scheme:dark){
+  :root{--bg:#121214;--card:#1c1c20;--ink:#ececf0;--mute:#9a99a2;--line:#2c2c32;--soft:#25252a;
+    --accent:#8b7ff0;--accent-ink:#121214;--danger:#f06464;--warn:#f0a63a;--ok:#4cc884;
+    --shadow:0 1px 2px rgba(0,0,0,.4);}
+}
+*{box-sizing:border-box;-webkit-tap-highlight-color:transparent}
+html,body{margin:0;background:var(--bg);color:var(--ink);font:16px/1.4 -apple-system,BlinkMacSystemFont,"SF Pro Text","Segoe UI",Roboto,sans-serif}
+body{min-height:100dvh;padding-bottom:calc(76px + env(safe-area-inset-bottom))}
+button,input,select,textarea{font:inherit;color:inherit}
+button{cursor:pointer}
+header.top{position:sticky;top:0;z-index:20;background:color-mix(in srgb,var(--bg) 88%,transparent);backdrop-filter:blur(12px);-webkit-backdrop-filter:blur(12px);
+  padding:calc(10px + env(safe-area-inset-top)) 16px 8px;display:flex;align-items:center;gap:10px}
+header.top h1{font-size:22px;margin:0;flex:1;letter-spacing:-.01em}
+.sync{font-size:12px;color:var(--mute);display:flex;align-items:center;gap:6px}
+.sync i{width:8px;height:8px;border-radius:50%;background:var(--ok);display:inline-block}
+.sync.off i{background:var(--mute)}
+.sync.demo i{background:var(--warn)}
+main{padding:0 16px 24px;max-width:720px;margin:0 auto}
+.banner{background:color-mix(in srgb,var(--warn) 15%,var(--card));border:1px solid color-mix(in srgb,var(--warn) 40%,transparent);border-radius:12px;padding:10px 12px;font-size:14px;margin:4px 0 12px}
+
+/* tab bar */
+nav.tabs{position:fixed;left:0;right:0;bottom:0;z-index:30;background:var(--card);border-top:1px solid var(--line);
+  display:flex;padding:6px 6px calc(6px + env(safe-area-inset-bottom))}
+nav.tabs button[hidden]{display:none}
+nav.tabs button{flex:1;border:0;background:none;padding:6px 0;display:flex;flex-direction:column;align-items:center;gap:2px;font-size:11px;color:var(--mute)}
+nav.tabs button svg{width:24px;height:24px}
+nav.tabs button.on{color:var(--accent);font-weight:600}
+.fab{position:fixed;right:18px;bottom:calc(84px + env(safe-area-inset-bottom));z-index:31;width:58px;height:58px;border-radius:50%;border:0;
+  background:var(--accent);color:var(--accent-ink);font-size:32px;line-height:1;box-shadow:0 6px 20px rgba(91,75,219,.4)}
+
+/* filters */
+.chips{display:flex;gap:8px;flex-wrap:wrap}
+.chips.scroll{flex-wrap:nowrap;overflow-x:auto;scrollbar-width:none;margin:0 -16px;padding:2px 16px}
+.chips.scroll::-webkit-scrollbar{display:none}
+.chip{flex:none;border:1px solid var(--line);background:var(--card);border-radius:999px;padding:6px 12px;font-size:14px;display:inline-flex;align-items:center;gap:6px;white-space:nowrap}
+.chip i{width:10px;height:10px;border-radius:50%;background:var(--c,var(--mute))}
+.chip.on{background:var(--c,var(--accent));border-color:var(--c,var(--accent));color:#fff}
+.chip.on i{background:#fff}
+.filters{display:grid;gap:10px;margin:4px 0 14px}
+.frow{display:flex;gap:8px}
+.frow > *{flex:1;min-width:0}
+.seg{display:flex;background:var(--soft);border-radius:10px;padding:3px}
+.seg button{flex:1;border:0;background:none;border-radius:8px;padding:6px 4px;font-size:13px;color:var(--mute)}
+.seg button.on{background:var(--card);color:var(--ink);font-weight:600;box-shadow:var(--shadow)}
+select,input[type=text],input[type=search],input[type=email],input[type=password],input[type=date],input[type=time],textarea{
+  width:100%;border:1px solid var(--line);background:var(--card);border-radius:10px;padding:9px 10px;font-size:16px;min-height:42px}
+input[type=date],input[type=time]{-webkit-appearance:none;appearance:none}
+textarea{min-height:70px;resize:vertical}
+
+/* list */
+.group{margin:16px 0 6px;font-size:13px;font-weight:700;color:var(--mute);text-transform:uppercase;letter-spacing:.04em;display:flex;justify-content:space-between}
+.group.late{color:var(--danger)}
+.card{background:var(--card);border-radius:14px;box-shadow:var(--shadow);overflow:hidden}
+.row{display:flex;align-items:flex-start;gap:10px;padding:11px 12px;border-bottom:1px solid var(--line);position:relative}
+.row:last-child{border-bottom:0}
+.row::before{content:"";position:absolute;left:0;top:10px;bottom:10px;width:3px;border-radius:2px;background:var(--c,transparent)}
+.check{flex:none;width:26px;height:26px;border-radius:50%;border:2px solid var(--line);background:none;display:grid;place-items:center;color:transparent;font-size:14px;margin-top:1px;padding:0}
+.check.st-doing{border-color:var(--warn);background:color-mix(in srgb,var(--warn) 18%,transparent)}
+.check.st-done{border-color:var(--ok);background:var(--ok);color:#fff}
+.body{flex:1;min-width:0}
+.title{font-weight:500;word-wrap:break-word}
+.done .title{text-decoration:line-through;color:var(--mute)}
+.meta{display:flex;flex-wrap:wrap;gap:6px 10px;font-size:13px;color:var(--mute);margin-top:3px;align-items:center}
+.who{display:inline-flex;align-items:center;gap:4px}
+.who::before{content:"";width:8px;height:8px;border-radius:50%;background:var(--c)}
+.tag{background:var(--soft);border-radius:6px;padding:1px 7px}
+.late-t{color:var(--danger);font-weight:600}
+.tag.shared{background:color-mix(in srgb,#0e9f9a 18%,transparent);color:#0b7f7b;font-weight:600}
+@media (prefers-color-scheme:dark){.tag.shared{color:#5fd6d0}}
+.prio{font-size:12px;font-weight:700;border-radius:5px;padding:0 5px;margin-right:4px;vertical-align:1px}
+.prio.p1{background:color-mix(in srgb,var(--warn) 22%,transparent);color:var(--warn)}
+.prio.p2{background:color-mix(in srgb,var(--danger) 20%,transparent);color:var(--danger)}
+.empty{color:var(--mute);text-align:center;padding:30px 10px;font-size:15px}
+.quick{display:flex;gap:8px;margin-bottom:12px}
+.quick input{flex:1}
+.btn{border:1px solid var(--line);background:var(--card);border-radius:10px;padding:9px 14px;font-weight:600;min-height:42px}
+.btn.primary{background:var(--accent);border-color:var(--accent);color:var(--accent-ink)}
+.btn.danger{color:var(--danger)}
+.btn.small{padding:5px 10px;min-height:0;font-size:13px}
+
+/* agenda */
+.agbar{display:flex;align-items:center;gap:8px;margin:4px 0 10px}
+.agbar .lbl{flex:1;text-align:center;font-weight:700}
+.navb{width:40px;height:40px;border-radius:10px;border:1px solid var(--line);background:var(--card);font-size:20px}
+.day{margin-bottom:10px}
+.dayh{display:flex;align-items:center;gap:8px;padding:8px 2px 6px;font-weight:700;font-size:15px}
+.dayh.today{color:var(--accent)}
+.dayh .add{margin-left:auto;border:0;background:var(--soft);border-radius:8px;width:30px;height:28px;font-size:18px;color:var(--mute)}
+.conf{background:color-mix(in srgb,var(--danger) 13%,var(--card));color:var(--danger);border-radius:8px;padding:6px 10px;font-size:13px;font-weight:600;margin-bottom:6px}
+.time{flex:none;width:62px;font-size:13px;font-weight:600;color:var(--mute);padding-top:2px;font-variant-numeric:tabular-nums}
+.row.isconf .time{color:var(--danger)}
+.noday{color:var(--mute);font-size:14px;padding:0 2px 6px}
+.month{display:grid;grid-template-columns:repeat(7,minmax(0,1fr));gap:3px;margin-bottom:12px}
+.cell{min-width:0}
+.month .dn{font-size:11px;color:var(--mute);text-align:center;padding:4px 0;font-weight:600}
+.cell{min-height:74px;border:0;border-radius:9px;background:var(--card);padding:4px 2px 3px;display:flex;flex-direction:column;align-items:stretch;gap:2px;font-size:14px;box-shadow:var(--shadow);text-align:left;overflow:hidden}
+.cell .n{align-self:center;font-weight:600;font-size:13px}
+.bars{display:flex;flex-direction:column;gap:2px;min-width:0}
+.bars b{display:block;font-weight:500;font-size:9.5px;line-height:13px;height:13px;padding:0 3px;border-radius:3px;background:color-mix(in srgb,var(--c) 22%,transparent);color:var(--ink);border-left:2px solid var(--c);white-space:nowrap;overflow:hidden;text-overflow:clip}
+.bars b.dn{opacity:.45;text-decoration:line-through}
+.bars em{font-style:normal;font-size:9.5px;color:var(--mute);padding-left:3px}
+.dayopen{grid-column:1/-1;background:var(--soft);border-radius:12px;padding:8px;margin:2px 0 6px;animation:op .18s ease-out}
+@keyframes op{from{opacity:0;transform:translateY(-4px)}to{opacity:1;transform:none}}
+.dayopen .dayh{padding-top:2px}
+.check.bill{border:0;font-size:17px;background:none}
+.convert{font-size:13px}
+.kpis{display:grid;grid-template-columns:1fr 1fr;gap:8px;margin:4px 0 12px}
+.kpi{background:var(--card);border-radius:14px;box-shadow:var(--shadow);padding:10px 12px}
+.kpi .v{font-size:22px;font-weight:700;letter-spacing:-.01em;font-variant-numeric:tabular-nums}
+.kpi .l{font-size:12px;color:var(--mute)}
+.amt{font-weight:700;font-variant-numeric:tabular-nums;white-space:nowrap}
+.frow2{display:flex;align-items:center;gap:8px}
+.frow2 .body{flex:1;min-width:0}
+.pill{font-size:12px;font-weight:600;border-radius:999px;padding:1px 8px;background:var(--soft)}
+.pill.late{background:color-mix(in srgb,var(--danger) 18%,transparent);color:var(--danger)}
+.pill.soon{background:color-mix(in srgb,var(--warn) 20%,transparent);color:var(--warn)}
+.pill.unpaid{background:color-mix(in srgb,var(--warn) 20%,transparent);color:var(--warn)}
+.pill.odd{background:color-mix(in srgb,var(--danger) 15%,transparent);color:var(--danger)}
+.sug{border:1px dashed color-mix(in srgb,#16a34a 55%,transparent);background:color-mix(in srgb,#16a34a 7%,var(--card));border-radius:14px;padding:10px 12px;margin-bottom:8px;font-size:14px}
+.sug .frow{margin-top:8px}
+.fbar{display:grid;grid-template-columns:52px 1fr 78px;gap:8px;align-items:center;padding:7px 12px;border-bottom:1px solid var(--line);font-size:14px}
+.fbar:last-child{border-bottom:0}
+.fbar .track{display:block;height:14px;background:var(--soft);border-radius:7px;overflow:hidden}
+.fbar .fill{display:block;height:100%;min-width:2px;background:#16a34a;border-radius:7px}
+.fbar.heavy .fill{background:var(--danger)}
+.fbar.heavy .m,.fbar.heavy .amt{color:var(--danger)}
+.fbar .why{grid-column:2/-1;font-size:12px;color:var(--mute);margin-top:-4px}
+#finForm{padding:14px 16px calc(16px + env(safe-area-inset-bottom));display:grid;gap:12px}
+#finForm[data-kind=invoice] .f-bill{display:none}
+#finForm[data-kind=bill] .f-inv{display:none}
+#finForm.nodue .f-due{display:none}
+#finForm.nocustom .f-custom{display:none}
+.cell.out{opacity:.4}
+.cell.today .n{background:var(--accent);color:var(--accent-ink);border-radius:50%;width:24px;height:24px;display:grid;place-items:center}
+.cell.sel{outline:2px solid var(--accent);outline-offset:-2px}
+.cell.conf{box-shadow:inset 0 0 0 2px var(--danger)}
+.dots{display:flex;gap:2px;flex-wrap:wrap;justify-content:center;max-width:30px}
+.dots i{width:6px;height:6px;border-radius:50%;background:var(--c)}
+.toggle{display:flex;align-items:center;gap:8px;font-size:14px;color:var(--mute)}
+.toggle input{width:18px;height:18px}
+
+/* settings */
+.sect{margin:18px 0}
+.sect h2{font-size:15px;margin:0 0 8px;color:var(--mute);text-transform:uppercase;letter-spacing:.04em}
+.sect .card{padding:12px;display:grid;gap:10px}
+.prow{display:flex;gap:8px;align-items:center}
+.prow input[type=color]{width:44px;height:42px;border:1px solid var(--line);border-radius:10px;background:var(--card);padding:3px}
+.catchip{display:inline-flex;align-items:center;gap:6px;background:var(--soft);border-radius:999px;padding:5px 6px 5px 12px;font-size:14px}
+.catchip button{border:0;background:var(--line);border-radius:50%;width:22px;height:22px;line-height:1;padding:0;color:var(--mute)}
+.small{font-size:13px;color:var(--mute)}
+.nsub{font-weight:700;font-size:14px;margin-top:8px}
+.toggle.sw{color:var(--ink);font-size:15px}
+
+/* editor */
+dialog{border:0;padding:0;background:var(--card);color:var(--ink);width:100%;max-width:560px;border-radius:18px 18px 0 0;margin:auto auto 0;max-height:92dvh}
+dialog::backdrop{background:rgba(0,0,0,.4)}
+@media (min-width:640px){dialog{border-radius:18px;margin:auto}}
+#edForm{padding:14px 16px calc(16px + env(safe-area-inset-bottom));display:grid;gap:12px}
+.sheet-head{display:flex;align-items:center}
+.sheet-head h2{flex:1;margin:0;font-size:18px}
+.x{border:0;background:var(--soft);border-radius:50%;width:32px;height:32px;font-size:18px}
+.grid2{display:grid;grid-template-columns:minmax(0,1fr) minmax(0,1fr);gap:10px}
+.grid2 > *{min-width:0}
+.grid2 input,.grid2 select{min-width:0;max-width:100%}
+dialog{overflow-x:hidden;max-width:min(560px,100vw)}
+.grid2 label,.lab{font-size:13px;color:var(--mute);display:grid;gap:4px}
+.actions{display:flex;gap:8px;flex-wrap:wrap}
+.actions .btn{flex:1 1 auto}
+.actions .primary{flex:1 1 100%;order:9}
+#edForm[data-type=shop] :is(.f-date,.f-time,.f-end,.f-prio,.f-status,.f-person){display:none}
+#edForm[data-type=task] .f-end,#edForm[data-type=task] .f-qty{display:none}
+#edForm[data-type=event] :is(.f-prio,.f-status,.f-qty){display:none}
+#edForm:not([data-type=shop]) .f-qty{display:none}
+#edForm:not([data-type=event]) :is(.f-enddate,.f-repeat,.f-until){display:none}
+#edForm.norepeat .f-until{display:none}
+.rep{font-size:12px}
+
+/* login */
+.login{min-height:80dvh;display:grid;place-items:center}
+.login .card{padding:24px 20px;width:100%;max-width:380px;display:grid;gap:12px}
+.login h2{margin:0;font-size:24px}
+.err{color:var(--danger);font-size:14px;min-height:1em}
+.toast{position:fixed;left:50%;transform:translateX(-50%);bottom:calc(150px + env(safe-area-inset-bottom));background:var(--ink);color:var(--bg);padding:10px 16px;border-radius:12px;font-size:14px;z-index:100;max-width:90vw}
+
+/* =============== THÈME 2.1 — rose poudré / prune, Helvetica =============== */
+:root{
+  --bg:#f8ecea;--bg2:#f3e1de;--card:#fffaf8;--ink:#3f2528;--mute:#8a6f72;--line:#ecd8d4;--soft:#f5e6e3;
+  --accent:#9c4d6e;--accent-2:#b86a89;--accent-ink:#ffffff;--danger:#c8475a;--warn:#d18a2e;--ok:#5c9a62;
+  --shadow:0 1px 2px rgba(110,50,60,.06),0 6px 18px rgba(110,50,60,.07);
+  --radius:18px;
+}
+@media (prefers-color-scheme:dark){
+  :root{--bg:#1d1416;--bg2:#241a1c;--card:#2a1f22;--ink:#f6e9ea;--mute:#b89ca0;--line:#3d2c30;--soft:#33262a;
+    --accent:#d48aa8;--accent-2:#e3a3bd;--accent-ink:#1d1416;--danger:#f07b8b;--warn:#f0b062;--ok:#8bc890;
+    --shadow:0 1px 2px rgba(0,0,0,.4);}
+}
+html,body{font-family:"Helvetica Neue",Helvetica,Arial,sans-serif;font-size:16px;letter-spacing:0}
+body{background:linear-gradient(180deg,var(--bg) 0%,var(--bg2) 100%) fixed;padding-bottom:calc(92px + env(safe-area-inset-bottom))}
+button,input,select,textarea{font-family:inherit}
+header.top{background:color-mix(in srgb,var(--bg) 85%,transparent)}
+header.top h1{font-size:24px;font-weight:700;color:var(--ink);display:flex;align-items:center;gap:10px}
+header.top h1 svg{width:26px;height:26px;color:var(--accent);flex:none}
+.card,.kpi{background:var(--card);border-radius:var(--radius);box-shadow:var(--shadow)}
+.row{border-bottom-color:var(--line)}
+.chip{background:var(--card);border-color:var(--line)}
+.seg{background:color-mix(in srgb,var(--accent) 10%,var(--card));border-radius:12px}
+.seg button.on{color:var(--accent)}
+.btn{border-radius:12px;border-color:var(--line);background:var(--card)}
+.btn.primary{background:linear-gradient(180deg,var(--accent-2),var(--accent));border:0;color:#fff;box-shadow:0 4px 12px color-mix(in srgb,var(--accent) 35%,transparent)}
+select,input[type=text],input[type=search],input[type=email],input[type=password],input[type=date],input[type=time],input[type=number],textarea{background:var(--card);border-color:var(--line);border-radius:12px}
+.group{color:var(--mute)}
+dialog{background:var(--card)}
+.fab{display:none!important}
+
+/* barre du bas avec gros + central */
+nav.tabs{background:color-mix(in srgb,var(--card) 92%,transparent);backdrop-filter:blur(14px);-webkit-backdrop-filter:blur(14px);
+  border-top:1px solid var(--line);border-radius:22px 22px 0 0;box-shadow:0 -4px 20px rgba(110,50,60,.08);align-items:flex-end}
+nav.tabs button{color:var(--mute);font-size:10.5px}
+nav.tabs button.on{color:var(--accent)}
+nav.tabs button.plus{flex:0 0 72px;position:relative;top:-18px}
+nav.tabs button.plus span{width:62px;height:62px;border-radius:50%;display:grid;place-items:center;font-size:34px;font-weight:300;line-height:1;color:#fff;
+  background:radial-gradient(circle at 35% 30%,var(--accent-2),var(--accent));box-shadow:0 6px 18px color-mix(in srgb,var(--accent) 45%,transparent),0 0 0 5px var(--card)}
+
+/* mois */
+.mnav{display:flex;align-items:center;justify-content:space-between;background:var(--card);border-radius:999px;box-shadow:var(--shadow);padding:6px;margin:4px auto 14px;max-width:340px}
+.mnav .lbl{font-size:19px;font-weight:600;display:flex;align-items:center;gap:8px}
+.mnav .lbl svg{width:20px;height:20px;color:var(--accent)}
+.mnav .navb{border:0;background:none;width:40px;height:40px;font-size:22px;color:var(--ink)}
+.month{gap:0;border-top:1px solid var(--line);margin-bottom:10px}
+.month .dn{font-size:13px;font-weight:600;color:var(--ink);padding:6px 0 8px;border:0}
+.month .dn{border-top:0}
+.month > .dn{margin-top:-1px;background:transparent}
+.cell{box-shadow:none;background:transparent;border-radius:0;border-bottom:1px solid var(--line);border-right:1px solid var(--line);
+  min-height:66px;align-items:center;justify-content:flex-start;padding:7px 2px 5px;gap:5px}
+.month .cell:nth-of-type(7n){border-right:0}
+.cell .n{font-size:16px;font-weight:500;color:var(--ink)}
+.cell.out .n{color:var(--mute)}
+.cell.out{opacity:.55}
+.cell.today{background:linear-gradient(180deg,var(--accent-2),var(--accent));border-radius:12px;border-color:transparent;box-shadow:0 4px 12px color-mix(in srgb,var(--accent) 35%,transparent)}
+.cell.today .n{background:none;color:#fff;width:auto;height:auto;font-weight:700}
+.cell.today .mk i{background:#fff!important}
+.cell.sel:not(.today){outline:2px solid var(--accent);outline-offset:-3px;border-radius:12px}
+.cell.conf .n{color:var(--danger)}
+.cell.today.conf .n{color:#fff;text-decoration:underline}
+.mk{display:flex;gap:4px;align-items:center;justify-content:center;flex-wrap:wrap;min-height:14px}
+.mk i{width:7px;height:7px;border-radius:50%;background:var(--c)}
+.mk .ico{font-size:15px;line-height:1}
+.legend{display:flex;flex-wrap:wrap;gap:6px 14px;justify-content:center;font-size:12.5px;color:var(--ink);margin:4px 0 16px}
+.legend span{display:inline-flex;align-items:center;gap:6px}
+.legend i{width:10px;height:10px;border-radius:50%;background:var(--c)}
+.recap{background:var(--card);border-radius:var(--radius);box-shadow:var(--shadow);padding:12px 14px;margin-bottom:14px}
+.recap h3{margin:0 0 6px;font-size:18px;font-weight:700;display:flex;align-items:center;gap:10px}
+.recap h3 svg{width:22px;height:22px;color:var(--accent)}
+.recap h3 small{font-weight:400;color:var(--mute);font-size:13px;margin-left:auto}
+.rl{display:flex;align-items:center;gap:12px;padding:9px 2px;border-bottom:1px solid var(--line);font-size:15px}
+.rl:last-child{border-bottom:0}
+.rl .ic{width:26px;text-align:center;font-size:18px;flex:none}
+.rl .t{flex:1;min-width:0;overflow:hidden;text-overflow:ellipsis;white-space:nowrap}
+.rl .d{color:var(--mute);font-size:13px;white-space:nowrap}
+.rl.done .t{text-decoration:line-through;color:var(--mute)}
+.hbtn{border:0;background:var(--card);box-shadow:var(--shadow);border-radius:12px;width:40px;height:40px;display:grid;place-items:center;color:var(--accent);flex:none}
+.hbtn svg{width:21px;height:21px}
+.hbtn.on{background:var(--accent);color:#fff}
+.ftoggle{border:0;background:var(--card);box-shadow:var(--shadow);border-radius:12px;width:44px;flex:none;color:var(--accent);display:grid;place-items:center}
+.ftoggle svg{width:20px;height:20px}
+.ftoggle.on{background:var(--accent);color:#fff}
+/* jour déplié : lignes pastel */
+.dayopen{background:var(--card);border-radius:var(--radius);box-shadow:var(--shadow);padding:12px;margin:8px 0 10px}
+.dayopen .dayh{font-size:17px}
+.dayopen .card{background:none;box-shadow:none;overflow:visible}
+.dayopen .row{background:color-mix(in srgb,var(--c) 17%,var(--card));border:0;border-radius:14px;margin-bottom:7px;padding:10px 12px}
+.dayopen .row::before{display:none}
+.dayopen .time{color:var(--ink);opacity:.8}
+.dayopen .add{background:linear-gradient(180deg,var(--accent-2),var(--accent));color:#fff;border-radius:10px}
+</style>
+</head>
+<body>
+<header class="top">
+  <h1><svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.8" stroke-linecap="round"><rect x="3" y="5" width="18" height="16" rx="3"/><path d="M3 10h18M8 3v4M16 3v4"/><circle cx="8" cy="14" r=".8" fill="currentColor"/><circle cx="12" cy="14" r=".8" fill="currentColor"/><circle cx="16" cy="14" r=".8" fill="currentColor"/><circle cx="8" cy="17.5" r=".8" fill="currentColor"/><circle cx="12" cy="17.5" r=".8" fill="currentColor"/></svg><span id="hTitle">Notre Agenda</span></h1>
+  <span class="sync" id="sync"><i></i><span></span></span>
+  <button class="hbtn" id="hdrSettings" aria-label="Réglages"><svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.8" stroke-linecap="round"><circle cx="12" cy="12" r="3"/><path d="M19.4 15a1.7 1.7 0 0 0 .3 1.8l.1.1a2 2 0 1 1-2.8 2.8l-.1-.1a1.7 1.7 0 0 0-1.8-.3 1.7 1.7 0 0 0-1 1.5V21a2 2 0 1 1-4 0v-.1a1.7 1.7 0 0 0-1.1-1.5 1.7 1.7 0 0 0-1.8.3l-.1.1a2 2 0 1 1-2.8-2.8l.1-.1a1.7 1.7 0 0 0 .3-1.8 1.7 1.7 0 0 0-1.5-1H3a2 2 0 1 1 0-4h.1a1.7 1.7 0 0 0 1.5-1.1 1.7 1.7 0 0 0-.3-1.8l-.1-.1a2 2 0 1 1 2.8-2.8l.1.1a1.7 1.7 0 0 0 1.8.3H9a1.7 1.7 0 0 0 1-1.5V3a2 2 0 1 1 4 0v.1a1.7 1.7 0 0 0 1 1.5 1.7 1.7 0 0 0 1.8-.3l.1-.1a2 2 0 1 1 2.8 2.8l-.1.1a1.7 1.7 0 0 0-.3 1.8V9a1.7 1.7 0 0 0 1.5 1H21a2 2 0 1 1 0 4h-.1a1.7 1.7 0 0 0-1.5 1z"/></svg></button>
+</header>
+<main id="main"><div class="empty">Chargement…</div></main>
+<button class="fab" id="fab" aria-label="Ajouter" hidden>+</button>
+<nav class="tabs" id="tabs" hidden>
+  <button data-view="tasks"><svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round"><path d="M9 6h11M9 12h11M9 18h11"/><path d="M3.5 6l1 1 2-2M3.5 12l1 1 2-2M3.5 18l1 1 2-2"/></svg>Tâches</button>
+  <button data-view="agenda"><svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round"><rect x="3" y="5" width="18" height="16" rx="2"/><path d="M3 10h18M8 3v4M16 3v4"/></svg>Agenda</button>
+  <button class="plus" id="tabPlus" aria-label="Ajouter"><span>+</span></button>
+  <button data-view="shop"><svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round"><path d="M3 4h2l2.4 11.2a2 2 0 0 0 2 1.6h7.7a2 2 0 0 0 2-1.5L21 8H6"/><circle cx="10" cy="20" r="1.3"/><circle cx="17" cy="20" r="1.3"/></svg>Courses</button>
+  <button data-view="finance" id="tabFinance" hidden><svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><rect x="2.5" y="6" width="19" height="13" rx="2"/><path d="M2.5 10h19"/><path d="M16 15h2"/></svg>Finance</button>
+  <button data-view="settings" id="tabSettings"><svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round"><circle cx="12" cy="12" r="3"/><path d="M19.4 15a1.7 1.7 0 0 0 .3 1.8l.1.1a2 2 0 1 1-2.8 2.8l-.1-.1a1.7 1.7 0 0 0-1.8-.3 1.7 1.7 0 0 0-1 1.5V21a2 2 0 1 1-4 0v-.1a1.7 1.7 0 0 0-1.1-1.5 1.7 1.7 0 0 0-1.8.3l-.1.1a2 2 0 1 1-2.8-2.8l.1-.1a1.7 1.7 0 0 0 .3-1.8 1.7 1.7 0 0 0-1.5-1H3a2 2 0 1 1 0-4h.1a1.7 1.7 0 0 0 1.5-1.1 1.7 1.7 0 0 0-.3-1.8l-.1-.1a2 2 0 1 1 2.8-2.8l.1.1a1.7 1.7 0 0 0 1.8.3H9a1.7 1.7 0 0 0 1-1.5V3a2 2 0 1 1 4 0v.1a1.7 1.7 0 0 0 1 1.5 1.7 1.7 0 0 0 1.8-.3l.1-.1a2 2 0 1 1 2.8 2.8l-.1.1a1.7 1.7 0 0 0-.3 1.8V9a1.7 1.7 0 0 0 1.5 1H21a2 2 0 1 1 0 4h-.1a1.7 1.7 0 0 0-1.5 1z"/></svg>Réglages</button>
+</nav>
+
+<dialog id="ed">
+  <form id="edForm" data-type="task" autocomplete="off">
+    <div class="sheet-head"><h2 id="edTitle">Nouveau</h2><button type="button" class="x" id="edClose" aria-label="Fermer">×</button></div>
+    <div class="seg" id="edType">
+      <button type="button" data-type="task">Tâche</button>
+      <button type="button" data-type="event">Événement</button>
+      <button type="button" data-type="shop">Course</button>
+    </div>
+    <input type="text" name="title" placeholder="Quoi ?" required>
+    <div class="lab f-person">Pour qui<div class="chips" id="edPerson"></div></div>
+    <div class="grid2">
+      <label class="f-cat">Catégorie<select name="category"></select></label>
+      <label class="f-qty">Quantité<input type="text" name="qty" placeholder="ex. 2 kg"></label>
+      <label class="f-date">Date<input type="date" name="date"></label>
+      <label class="f-time">Heure<input type="time" name="time"></label>
+      <label class="f-end">Fin<input type="time" name="endTime"></label>
+      <label class="f-enddate">Jusqu'au (plusieurs jours)<input type="date" name="endDate"></label>
+      <label class="f-repeat">Répéter<select name="repeat"><option value="">Jamais</option><option value="daily:1">Chaque jour</option><option value="weekly:1">Chaque semaine</option><option value="weekly:2">Toutes les 2 semaines</option><option value="monthly:1">Chaque mois</option><option value="yearly:1">Chaque année</option></select></label>
+      <label class="f-until">Fin de la répétition<input type="date" name="until"></label>
+      <label class="f-prio">Priorité<select name="priority"><option value="0">Normale</option><option value="1">Haute</option><option value="2">Urgente</option></select></label>
+      <label class="f-status">Statut<select name="status"><option value="todo">À faire</option><option value="doing">En cours</option><option value="done">Fait</option></select></label>
+    </div>
+    <textarea name="notes" placeholder="Notes (adresse, détails…)"></textarea>
+    <div class="actions">
+      <button type="button" class="btn danger" id="edDel">Supprimer</button>
+      <button type="button" class="btn" id="edDup">Dupliquer</button>
+      <button type="button" class="btn" id="edSkip">Retirer ce jour</button>
+      <button type="button" class="btn convert" id="edConvert">→ Tâche</button>
+      <button type="submit" class="btn primary">Enregistrer</button>
+    </div>
+  </form>
+</dialog>
+
+<dialog id="finEd">
+  <form id="finForm" data-kind="invoice" autocomplete="off">
+    <div class="sheet-head"><h2 id="finTitle">Facture</h2><button type="button" class="x" id="finClose" aria-label="Fermer">×</button></div>
+    <input type="text" name="label" class="f-bill" placeholder="Libellé (ex. Assurance auto)">
+    <input type="text" name="supplier" placeholder="Fournisseur (ex. Engie)">
+    <div class="grid2">
+      <label>Montant (€)<input type="text" name="amount" inputmode="decimal" placeholder="0,00" required></label>
+      <label>Catégorie<select name="fcat"></select></label>
+      <label class="f-inv">Date de la facture<input type="date" name="date"></label>
+      <label class="f-inv">Statut<select name="paid"><option value="1">Payée</option><option value="0">À payer</option></select></label>
+      <label class="f-inv f-due">Échéance<input type="date" name="due"></label>
+      <label class="f-inv">Rattacher à<select name="billId"></select></label>
+      <label class="f-bill">Revient tous les<select name="months"><option value="1">Mois</option><option value="2">2 mois</option><option value="3">3 mois</option><option value="6">6 mois</option><option value="12">An</option><option value="custom">Autre…</option></select></label>
+      <label class="f-bill f-custom">Nombre de mois<input type="number" name="customMonths" min="1" max="60" value="4"></label>
+      <label class="f-bill">Prochaine échéance<input type="date" name="next"></label>
+    </div>
+    <textarea name="fnote" placeholder="Note (n° de contrat, référence…)"></textarea>
+    <div class="actions">
+      <button type="button" class="btn danger" id="finDel">Supprimer</button>
+      <button type="submit" class="btn primary">Enregistrer</button>
+    </div>
+  </form>
+</dialog>
+
+<script type="module">
+/* =========================================================
+   CONFIGURATION — colle ici la config de TON projet Firebase
+   (Firebase > Paramètres du projet > Vos applications > Config).
+   Tant que apiKey est vide, l'appli tourne en MODE DÉMO
+   (données gardées uniquement sur cet appareil).
+   ========================================================= */
+const FIREBASE_CONFIG = {
+  apiKey: "AIzaSyBxwA5rcBIQeSdlRTNPM92xTrGEdRxuA8c",
+  authDomain: "agenda-famille-d6eaf.firebaseapp.com",
+  projectId: "agenda-famille-d6eaf",
+  storageBucket: "agenda-famille-d6eaf.firebasestorage.app",
+  messagingSenderId: "851152496646",
+  appId: "1:851152496646:web:9cac6e4dd25a80be7e3b87"
+};
+const FB_VERSION = "10.12.2";
+/* Clé publique « Web Push » : Firebase > Paramètres du projet > Cloud Messaging > Certificats Web Push */
+const VAPID_KEY = "BCZQJTTrTnjWoyTtFpRavHpY7oC2FsOSKxSAUVgZgo6H2d066CT4-Ex_b9lLbtYMIzpk8fm4IDb6sdvWe5RfSX4";
+const DEMO = !FIREBASE_CONFIG.apiKey;
+
+const DEFAULT_SETTINGS = {
+  people: [
+    { id: "p1", name: "Kevin", color: "#3b82f6" },
+    { id: "p2", name: "Emeline", color: "#e0457b" },
+    { id: "both", name: "Nous deux", color: "#8b5cf6" },
+    { id: "kids", name: "Enfants", color: "#f59e0b" }
+  ],
+  categories: ["Sombreffe", "Presta / MDR", "Concerts & répètes", "Maison", "Enfants", "Admin", "Rendez-vous", "Loisirs", "Anniversaires", "Animaux", "Fériés & congés"],
+  shopCategories: ["Fruits & légumes", "Frais", "Boucherie", "Épicerie", "Boissons", "Surgelés", "Maison & hygiène", "Autre"]
+};
+
+/* ---------- espaces : chaque foyer a son agenda privé, seule la catégorie partagée est commune ---------- */
+const APP_VERSION = "2.1 — 11 nov. 2026";
+const SHARED_CAT = "Sombreffe";
+const FIN_CAT = "Finance", FIN_COLOR = "#16a34a";
+const FIN_CATS = ["Énergie", "Eau", "Assurance", "Télécom & internet", "Impôts & taxes", "Voiture", "École & enfants", "Santé", "Maison", "Banque & crédit", "Abonnements", "Autre"];
+const LOGIN_DOMAIN = "example.com";            // « claviem » se connecte comme claviem@example.com
+const SPACE_OF = {
+  "byk_kevin@hotmail.com": "famille",
+  "emeline999@hotmail.com": "famille",
+  "claviem999@hotmail.com": "claviem",   // Viviane
+  "claviem@skynet.be": "claviem"         // Claude
+};
+const SPACES = {
+  famille: { label: "Kevin & Emeline", items: ["items"], settings: ["meta", "settings"] },
+  claviem: { label: "Sombreffe", items: ["spaces", "claviem", "items"], settings: ["spaces", "claviem", "meta", "settings"] }
+};
+const SPACE_DEFAULTS = {
+  claviem: {
+    people: [
+      { id: "p1", name: "Claude", color: "#2f6fd6" },
+      { id: "p2", name: "Viviane", color: "#e0457b" },
+      { id: "both", name: "Nous deux", color: "#8b5cf6" },
+      { id: "kids", name: "Petits-enfants", color: "#f59e0b" }
+    ],
+    categories: ["Sombreffe", "Maison", "Rendez-vous", "Anniversaires", "Loisirs", "Admin"],
+    shopCategories: ["Fruits & légumes", "Frais", "Boucherie", "Épicerie", "Boissons", "Surgelés", "Maison & hygiène", "Autre"]
+  }
+};
+const SHARED_COLOR = "#0e9f9a";
+const spaceOf = email => SPACE_OF[(email || "").toLowerCase()] || "famille";
+const isShared = i => i && (i._col === "shared" || i.category === SHARED_CAT);
+
+/* ---------- utilitaires ---------- */
+const $ = (s, el = document) => el.querySelector(s);
+const esc = s => String(s ?? "").replace(/[&<>"']/g, c => ({ "&": "&amp;", "<": "&lt;", ">": "&gt;", '"': "&quot;", "'": "&#39;" }[c]));
+const pad = n => String(n).padStart(2, "0");
+const ymd = d => `${d.getFullYear()}-${pad(d.getMonth() + 1)}-${pad(d.getDate())}`;
+const parseYmd = s => { const [y, m, d] = s.split("-").map(Number); return new Date(y, m - 1, d); };
+const addDays = (d, n) => { const x = new Date(d); x.setDate(x.getDate() + n); return x; };
+const startOfWeek = d => { const x = new Date(d.getFullYear(), d.getMonth(), d.getDate()); return addDays(x, -((x.getDay() + 6) % 7)); };
+const todayStr = () => ymd(new Date());
+const uid = () => Date.now().toString(36) + Math.random().toString(36).slice(2, 8);
+const clone = o => JSON.parse(JSON.stringify(o));
+const fmtDay = (s, opt = { weekday: "short", day: "numeric", month: "short" }) => parseYmd(s).toLocaleDateString("fr-BE", opt);
+const toMin = t => { const [h, m] = t.split(":").map(Number); return h * 60 + m; };
+const ls = {
+  get(k, d) { try { const v = localStorage.getItem(k); return v == null ? d : JSON.parse(v); } catch { return d; } },
+  set(k, v) { try { localStorage.setItem(k, JSON.stringify(v)); } catch {} }
+};
+function toast(msg, ms = 2600) {
+  const t = document.createElement("div"); t.className = "toast"; t.textContent = msg;
+  document.body.appendChild(t); setTimeout(() => t.remove(), ms);
+}
+
+/* ---------- état ---------- */
+const state = {
+  items: [], settings: clone(DEFAULT_SETTINGS), user: null,
+  view: ls.get("na.view", "tasks"),
+  me: ls.get("na.me", "p1"),
+  filters: Object.assign({ persons: [], category: "", status: "open", sort: "due", q: "" }, ls.get("na.filters", {})),
+  agenda: { mode: ls.get("na.agmode", "week"), anchor: new Date(), sel: todayStr(), open: null, withTasks: ls.get("na.agtasks", true) },
+  fin: [], finTab: ls.get("na.fintab", "upcoming"), finYear: String(new Date().getFullYear()), finCat: ""
+};
+state.filters.q = "";
+let store = null;
+
+const P = id => state.settings.people.find(p => p.id === id) || { name: "—", color: "#999" };
+const saveFilters = () => ls.set("na.filters", state.filters);
+
+/* ---------- stockage : démo (local) ---------- */
+function createLocalStore() {
+  const KEY = "na.demo";
+  let data = ls.get(KEY, null);
+  if (!data) data = { items: demoItems(), settings: clone(DEFAULT_SETTINGS) };
+  if (!data.fin) data.fin = demoFinance();
+  const iL = new Set(), sL = new Set(), fL = new Set();
+  const emit = () => { ls.set(KEY, data); iL.forEach(f => f(data.items.slice())); sL.forEach(f => f(data.settings)); fL.forEach(f => f(data.fin.slice())); };
+  const now = () => Date.now();
+  return {
+    mode: "demo",
+    onItems(cb) { iL.add(cb); cb(data.items.slice()); },
+    onSettings(cb) { sL.add(cb); cb(data.settings); },
+    async add(it) { data.items.push({ ...it, id: uid(), createdAt: now(), updatedAt: now() }); emit(); },
+    async update(id, p) { const i = data.items.find(x => x.id === id); if (i) Object.assign(i, p, { updatedAt: now() }); emit(); },
+    async remove(id) { data.items = data.items.filter(x => x.id !== id); emit(); },
+    async removeMany(ids) { const s = new Set(ids); data.items = data.items.filter(x => !s.has(x.id)); emit(); },
+    async saveSettings(s) { data.settings = s; emit(); },
+    async importItems(items) { items.forEach(i => data.items.push({ ...i, id: uid() })); emit(); },
+    onFinance(cb) { fL.add(cb); cb(data.fin.slice()); },
+    async finAdd(o) { const id = uid(); data.fin.push({ ...o, id, createdAt: now(), updatedAt: now() }); emit(); return id; },
+    async finUpdate(id, p) { const x = data.fin.find(f => f.id === id); if (x) Object.assign(x, p, { updatedAt: now() }); emit(); },
+    async finRemove(id) { data.fin = data.fin.filter(f => f.id !== id); emit(); }
+  };
+}
+function demoFinance() {
+  const t = new Date(), d = n => ymd(addDays(t, n)), m = n => ymd(new Date(t.getFullYear(), t.getMonth() + n, Math.min(t.getDate(), 28)));
+  const inv = (supplier, amount, date, category, extra = {}) => ({ id: uid(), kind: "invoice", supplier, amount, date, category, paid: true, due: "", note: "", billId: "", ...extra });
+  return [
+    { id: "b1", kind: "bill", label: "Assurance auto", supplier: "Ethias", amount: 640, months: 12, next: m(2), category: "Assurance", active: true, note: "" },
+    { id: "b2", kind: "bill", label: "Électricité (acompte)", supplier: "Engie", amount: 145, months: 1, next: d(5), category: "Énergie", active: true, note: "" },
+    { id: "b3", kind: "bill", label: "Précompte immobilier", supplier: "SPF Finances", amount: 1180, months: 12, next: m(4), category: "Impôts & taxes", active: true, note: "" },
+    { id: "b4", kind: "bill", label: "Eau", supplier: "SWDE", amount: 210, months: 3, next: d(-2), category: "Eau", active: true, note: "" },
+    inv("Proximus", 79.9, m(-3), "Télécom & internet"), inv("Proximus", 79.9, m(-2), "Télécom & internet"), inv("Proximus", 81.5, m(-1), "Télécom & internet"),
+    inv("Garage Dupont", 380, m(-4), "Voiture"), inv("Engie", 145, m(-2), "Énergie", { billId: "b2" }), inv("Engie", 145, m(-1), "Énergie", { billId: "b2" }),
+    inv("Engie", 201, d(-3), "Énergie"), inv("Vivaqua", 64, d(-1), "Eau", { paid: false, due: d(9) })
+  ];
+}
+function demoItems() {
+  const t = new Date(), d = n => ymd(addDays(t, n)), now = Date.now();
+  const mk = o => ({ id: uid(), notes: "", qty: "", time: "", endTime: "", date: "", priority: 0, status: "todo", createdAt: now, updatedAt: now, ...o });
+  return [
+    mk({ type: "task", title: "Envoyer le devis pour le mariage de samedi", person: "p1", category: "Presta / MDR", date: d(-1), priority: 2 }),
+    mk({ type: "task", title: "Réserver la salle de répète", person: "p2", category: "Concerts & répètes", date: d(0), priority: 1, status: "doing" }),
+    mk({ type: "task", title: "Inscrire les enfants au stage de Carnaval", person: "both", category: "Enfants", date: d(3) }),
+    mk({ type: "task", title: "Changer le filtre de la hotte", person: "p1", category: "Maison" }),
+    mk({ type: "task", title: "Payer la facture d'électricité", person: "p2", category: "Admin", date: d(6), status: "done" }),
+    mk({ type: "event", title: "Montage lumière – salle des fêtes", person: "p1", category: "Presta / MDR", date: d(1), time: "14:00", endTime: "23:00" }),
+    mk({ type: "event", title: "Concert percussions", person: "p2", category: "Concerts & répètes", date: d(1), time: "20:00", endTime: "22:30", notes: "Qui garde les enfants ?" }),
+    mk({ type: "event", title: "Dentiste", person: "kids", category: "Rendez-vous", date: d(2), time: "16:30", endTime: "17:00" }),
+    mk({ type: "event", title: "Resto en amoureux", person: "both", category: "Loisirs", date: d(5), time: "19:30" }),
+    mk({ type: "shop", title: "Pommes", category: "Fruits & légumes", qty: "1 kg", person: "both" }),
+    mk({ type: "shop", title: "Lait", category: "Frais", qty: "2", person: "both" }),
+    mk({ type: "shop", title: "Pâtes", category: "Épicerie", person: "both" }),
+    mk({ type: "shop", title: "Produit vaisselle", category: "Maison & hygiène", person: "both", status: "done" })
+  ];
+}
+
+/* ---------- stockage : Firebase (cloud partagé) ---------- */
+async function loadFirebase() {
+  const base = `https://www.gstatic.com/firebasejs/${FB_VERSION}/`;
+  const [appM, authM, fsM] = await Promise.all([
+    import(base + "firebase-app.js"), import(base + "firebase-auth.js"), import(base + "firebase-firestore.js")
+  ]);
+  const app = appM.initializeApp(FIREBASE_CONFIG);
+  let auth;
+  try { auth = authM.initializeAuth(app, { persistence: [authM.indexedDBLocalPersistence, authM.browserLocalPersistence] }); }
+  catch { auth = authM.getAuth(app); }
+  let db;
+  try { db = fsM.initializeFirestore(app, { localCache: fsM.persistentLocalCache({ tabManager: fsM.persistentMultipleTabManager() }) }); }
+  catch { db = fsM.getFirestore(app); }
+  return { app, auth, a: authM, db, f: fsM };
+}
+function createCloudStore(fb, user) {
+  const { db, f } = fb;
+  const space = spaceOf(user.email), sp = SPACES[space];
+  const own = f.collection(db, ...sp.items), shared = f.collection(db, "shared_items"), setRef = f.doc(db, ...sp.settings);
+  const now = () => Date.now(), by = user.email.toLowerCase();
+  const colOf = cat => cat === SHARED_CAT ? shared : own;
+  const find = id => state.items.find(i => i.id === id);
+  const strip = o => { const { id, _col, ...rest } = o; return rest; };
+  const label = o => o.category === SHARED_CAT ? { whoLabel: P(o.person).name, fromSpace: space } : {};
+  const defaults = () => clone(SPACE_DEFAULTS[space] || DEFAULT_SETTINGS);
+  let ownItems = [], sharedItems = [];
+  return {
+    mode: "cloud", space,
+    onItems(cb, onErr) {
+      const emit = () => cb([...ownItems, ...sharedItems]);
+      const u1 = f.onSnapshot(own, { includeMetadataChanges: true }, snap => { setPending(snap.metadata.hasPendingWrites, snap.metadata.fromCache); ownItems = snap.docs.map(d => ({ id: d.id, ...d.data(), _col: "own" })); emit(); }, onErr);
+      const u2 = f.onSnapshot(shared, snap => { sharedItems = snap.docs.map(d => ({ id: d.id, ...d.data(), _col: "shared" })); emit(); }, onErr);
+      return () => { u1(); u2(); };
+    },
+    onSettings(cb, onErr) {
+      return f.onSnapshot(setRef, s => {
+        const st = s.exists() ? { ...defaults(), ...s.data() } : defaults();
+        if (!st.categories.includes(SHARED_CAT)) st.categories = [SHARED_CAT, ...st.categories];
+        cb(st);
+      }, onErr);
+    },
+    add(it) { const o = strip(it); return f.addDoc(colOf(o.category), { ...o, ...label(o), createdAt: now(), updatedAt: now(), by }); },
+    update(id, p) {
+      const cur = find(id); if (!cur) return Promise.resolve();
+      const curCol = cur._col === "shared" ? shared : own;
+      const next = { ...strip(cur), ...p };
+      if (p.category !== undefined && (p.category === SHARED_CAT) !== (cur._col === "shared")) {
+        const b = f.writeBatch(db);
+        b.set(f.doc(colOf(next.category)), { ...next, ...label(next), updatedAt: now(), by });
+        b.delete(f.doc(curCol, id));
+        return b.commit();
+      }
+      const extra = cur._col === "shared" && p.person !== undefined ? { whoLabel: P(p.person).name } : {};
+      return f.updateDoc(f.doc(curCol, id), { ...p, ...extra, updatedAt: now(), by });
+    },
+    remove(id) { const cur = find(id); return f.deleteDoc(f.doc(cur && cur._col === "shared" ? shared : own, id)); },
+    async removeMany(ids) { for (let i = 0; i < ids.length; i += 400) { const b = f.writeBatch(db); ids.slice(i, i + 400).forEach(id => { const cur = find(id); b.delete(f.doc(cur && cur._col === "shared" ? shared : own, id)); }); await b.commit(); } },
+    saveSettings(s) { return f.setDoc(setRef, s); },
+    async importItems(items) { for (let i = 0; i < items.length; i += 400) { const b = f.writeBatch(db); items.slice(i, i + 400).forEach(it => { const o = strip(it); b.set(f.doc(colOf(o.category)), { ...o, ...label(o) }); }); await b.commit(); } },
+    onFinance(cb, onErr) { return space === "famille" ? f.onSnapshot(f.collection(db, "finance"), snap => cb(snap.docs.map(d => ({ id: d.id, ...d.data() }))), onErr) : () => {}; },
+    async finAdd(o) { const r = await f.addDoc(f.collection(db, "finance"), { ...strip(o), createdAt: now(), updatedAt: now(), by }); return r.id; },
+    finUpdate(id, p) { return f.updateDoc(f.doc(db, "finance", id), { ...strip(p), updatedAt: now(), by }); },
+    finRemove(id) { return f.deleteDoc(f.doc(db, "finance", id)); }
+  };
+}
+const fail = e => { console.error(e); toast(e?.code === "permission-denied" ? "Accès refusé : ce compte n'est pas autorisé." : "Erreur : " + (e?.message || e)); };
+
+/* ---------- indicateur de synchro ---------- */
+let pending = false, cached = false;
+function setPending(p, c) { pending = p; cached = c; paintSync(); }
+function paintSync() {
+  const el = $("#sync"), txt = el.querySelector("span");
+  el.className = "sync";
+  if (DEMO) { el.classList.add("demo"); txt.textContent = "Démo"; return; }
+  if (!state.user) { txt.textContent = ""; el.classList.add("off"); return; }
+  if (!navigator.onLine) { el.classList.add("off"); txt.textContent = "Hors ligne"; return; }
+  txt.textContent = pending ? "Envoi…" : "Synchronisé";
+}
+addEventListener("online", paintSync); addEventListener("offline", paintSync);
+
+/* ---------- démarrage ---------- */
+let fbRef = null;
+async function boot() {
+  paintSync();
+  if (DEMO) { store = createLocalStore(); startApp(); return; }
+  try { fbRef = await loadFirebase(); }
+  catch (e) { $("#main").innerHTML = `<div class="empty">Impossible de charger Firebase. Vérifie ta connexion.<br><small>${esc(e.message)}</small></div>`; return; }
+  fbRef.a.onAuthStateChanged(fbRef.auth, user => {
+    state.user = user;
+    if (!user) { renderLogin(); return; }
+    store = createCloudStore(fbRef, user);
+    startApp();
+  });
+}
+let unsub = [];
+function startApp() {
+  unsub.forEach(u => typeof u === "function" && u()); unsub = [];
+  $("#tabs").hidden = false; $("#hdrSettings").hidden = false;
+  const onErr = e => {
+    if (e?.code === "permission-denied") renderDenied(); else fail(e);
+  };
+  unsub.push(store.onSettings(s => { state.settings = s; if (state.view !== "settings") render(); }, onErr));
+  let cleaned = false;
+  unsub.push(store.onItems(items => {
+    state.items = items;
+    if (!cleaned && items.length) { cleaned = true; setTimeout(purgeOldDone, 3000); }
+    if (state.view !== "settings") render();
+  }, onErr));
+  $("#tabFinance").hidden = !financeOn();
+  $("#tabSettings").hidden = financeOn();
+  if (financeOn() && store.onFinance) unsub.push(store.onFinance(list => { state.fin = list; if (state.view !== "settings") render(); }, e => console.warn("finance", e)));
+  render(); paintSync();
+  if (store.mode === "cloud") { watchDevice(); refreshToken(); }
+}
+
+/* ---------- notifications (Firebase Cloud Messaging) ---------- */
+const NOTIF_DEFAULTS = { finRemind: true, remind: true, leads: [60], allDay: "veille20", persons: [], categories: [], onAdd: true, onEdit: false, onDone: false, types: ["event", "task", "shop"], quiet: true };
+const isStandalone = () => matchMedia("(display-mode: standalone)").matches || navigator.standalone === true;
+const isIOS = () => /iPhone|iPad|iPod/.test(navigator.userAgent);
+let msgM = null, messaging = null, devUnsub = null, fgHooked = false;
+state.dev = null;
+function deviceId() { let id = ls.get("na.deviceId", null); if (!id) { id = uid() + uid(); ls.set("na.deviceId", id); } return id; }
+const devRef = () => fbRef.f.doc(fbRef.db, "devices", deviceId());
+function notifSupport() {
+  if (DEMO || !fbRef) return "demo";
+  if (!("serviceWorker" in navigator) || !("Notification" in window) || !("PushManager" in window)) return isIOS() && !isStandalone() ? "ios-browser" : "no";
+  if (!VAPID_KEY) return "nokey";
+  return "ok";
+}
+async function getMessagingToken() {
+  msgM = msgM || await import(`https://www.gstatic.com/firebasejs/${FB_VERSION}/firebase-messaging.js`);
+  if (!(await msgM.isSupported())) throw new Error("notifications non gérées par ce navigateur");
+  const reg = await navigator.serviceWorker.register("firebase-messaging-sw.js");
+  await navigator.serviceWorker.ready;
+  messaging = messaging || msgM.getMessaging(fbRef.app);
+  const token = await msgM.getToken(messaging, { vapidKey: VAPID_KEY, serviceWorkerRegistration: reg });
+  if (!fgHooked) { msgM.onMessage(messaging, m => toast(`${m.notification?.title || ""} — ${m.notification?.body || ""}`, 6000)); fgHooked = true; }
+  return token;
+}
+const devInfo = token => ({ token, email: state.user.email.toLowerCase(), space: spaceOf(state.user.email), name: P(state.me).name, me: state.me, ua: navigator.userAgent.slice(0, 140), updatedAt: Date.now() });
+async function enableNotifs() {
+  try {
+    const perm = await Notification.requestPermission();
+    if (perm !== "granted") { toast("Notifications refusées. Pour changer : Réglages de l'iPhone → Notifications → Agenda.", 6000); return; }
+    const token = await getMessagingToken();
+    await fbRef.f.setDoc(devRef(), { ...devInfo(token), prefs: state.dev?.prefs || NOTIF_DEFAULTS }, { merge: true });
+    ls.set("na.notifOn", true); watchDevice(); toast("Notifications activées 🎉");
+  } catch (e) { console.error(e); toast("Impossible d'activer : " + (e.message || e), 6000); }
+}
+async function disableNotifs() {
+  try { if (messaging && msgM) await msgM.deleteToken(messaging).catch(() => {}); await fbRef.f.deleteDoc(devRef()); } catch (e) { console.error(e); }
+  ls.set("na.notifOn", false); state.dev = null; render();
+}
+function watchDevice() {
+  if (DEMO || !fbRef || devUnsub) return;
+  devUnsub = fbRef.f.onSnapshot(devRef(), s => { state.dev = s.exists() ? s.data() : null; if (state.view === "settings") render(); }, () => {});
+}
+async function refreshToken() {
+  if (!ls.get("na.notifOn", false) || notifSupport() !== "ok" || Notification.permission !== "granted") return;
+  try { await fbRef.f.setDoc(devRef(), devInfo(await getMessagingToken()), { merge: true }); } catch (e) { console.warn("jeton", e); }
+}
+function setPref(k, v) {
+  const prefs = { ...NOTIF_DEFAULTS, ...(state.dev?.prefs || {}), [k]: v };
+  state.dev = { ...(state.dev || {}), prefs }; render();
+  fbRef.f.setDoc(devRef(), { prefs }, { merge: true }).catch(fail);
+}
+function togglePrefList(k, v) { const a = ({ ...NOTIF_DEFAULTS, ...(state.dev?.prefs || {}) })[k] || []; setPref(k, a.includes(v) ? a.filter(x => x !== v) : [...a, v]); }
+async function sendTest() {
+  if (!state.dev?.token) return;
+  await fbRef.f.addDoc(fbRef.f.collection(fbRef.db, "pings"), { token: state.dev.token, deviceId: deviceId(), at: Date.now() }).catch(fail);
+  toast("Test envoyé : la notif arrive dans quelques secondes.", 4000);
+}
+function notifSection() {
+  const sup = notifSupport();
+  let body;
+  if (sup === "demo") body = `<div class="small">Disponible quand l'appli est connectée (pas en mode démo).</div>`;
+  else if (sup === "ios-browser") body = `<div>Sur iPhone, les notifications marchent uniquement depuis l'icône de l'écran d'accueil.</div><div class="small">Safari → Partager → « Sur l'écran d'accueil », puis ouvre l'appli depuis l'icône (iOS 16.4 minimum).</div>`;
+  else if (sup === "no") body = `<div class="small">Ce navigateur ne gère pas les notifications.</div>`;
+  else if (sup === "nokey") body = `<div class="small">La clé de notification n'est pas encore configurée dans l'appli.</div>`;
+  else if (!state.dev) body = `<button class="btn primary" data-act="notifOn">🔔 Activer sur cet appareil</button><div class="small">Chaque téléphone a ses propres réglages de notifications.</div>`;
+  else {
+    const p = { ...NOTIF_DEFAULTS, ...(state.dev.prefs || {}) };
+    const sw = (k, l) => `<label class="toggle sw"><input type="checkbox" data-act="np" data-k="${k}" ${p[k] ? "checked" : ""}> ${l}</label>`;
+    const chip = (k, v, l, c) => `<button class="chip ${(p[k] || []).includes(v) ? "on" : ""}" data-act="npl" data-k="${k}" data-v="${esc(String(v))}"${c ? ` style="--c:${esc(c)}"` : ""}>${c ? "<i></i>" : ""}${esc(l)}</button>`;
+    const opt = (v, l) => `<option value="${v}" ${p.allDay === v ? "selected" : ""}>${l}</option>`;
+    body = `
+      <div class="nsub">⏰ Rappels avant les événements</div>
+      ${sw("remind", "Activer les rappels")}
+      ${p.remind ? `<div class="chips">${[[15, "15 min"], [30, "30 min"], [60, "1 h"], [120, "2 h"], [1440, "24 h avant"]].map(([v, l]) => chip("leads", v, l)).join("")}</div>
+      <label class="lab">Événements « Journée »<select data-act="npsel" data-k="allDay">${opt("off", "Pas de rappel")}${opt("veille20", "La veille à 20 h")}${opt("jour8", "Le jour même à 8 h")}</select></label>` : ""}
+      <div class="nsub">✍️ Quand l'autre change quelque chose</div>
+      ${sw("onAdd", "Quand il/elle ajoute")}${sw("onEdit", "Quand il/elle modifie")}${sw("onDone", "Quand il/elle coche")}
+      <div class="chips">${chip("types", "event", "📅 Agenda")}${chip("types", "task", "✅ Tâches")}${chip("types", "shop", "🛒 Courses")}</div>
+      ${sw("quiet", "Silence entre 22 h et 7 h")}
+      ${store && store.space === "famille" ? `<div class="nsub">💶 Paiements à venir</div>${sw("finRemind", "Rappels : début du mois, 7 j avant, 3 j avant et le jour J (9 h)")}` : ""}
+      <div class="nsub">🎯 Seulement pour… <span class="small">(rien de sélectionné = tout)</span></div>
+      <div class="chips">${state.settings.people.map(pp => chip("persons", pp.id, pp.name, pp.color)).join("")}</div>
+      <div class="chips">${state.settings.categories.map(c => chip("categories", c, c)).join("")}</div>
+      <div class="frow"><button class="btn" data-act="notifTest">Envoyer un test</button><button class="btn danger" data-act="notifOff">Désactiver</button></div>`;
+  }
+  return `<div class="sect"><h2>Notifications</h2><div class="card">${body}</div></div>`;
+}
+
+/* ---------- connexion (email + mot de passe) ---------- */
+function renderLogin() {
+  $("#tabs").hidden = true; $("#fab").hidden = true; $("#hdrSettings").hidden = true; paintSync();
+  $("#main").innerHTML = `
+  <div class="login"><form class="card" id="loginForm">
+    <h2>Notre Agenda</h2>
+    <div class="small">Connecte-toi avec ton email et ton mot de passe.</div>
+    <input type="text" name="email" placeholder="Email" autocomplete="username" autocapitalize="none" autocorrect="off" spellcheck="false" required value="${esc(ls.get("na.lastEmail", ""))}">
+    <input type="password" name="pw" placeholder="Mot de passe" autocomplete="current-password" required>
+    <div class="err" id="loginErr"></div>
+    <button class="btn primary" type="submit">Se connecter</button>
+    <button class="btn" type="button" id="forgot">Mot de passe oublié</button>
+  </form></div>`;
+  const form = $("#loginForm");
+  form.onsubmit = async e => {
+    e.preventDefault();
+    const fd = new FormData(form);
+    $("#loginErr").textContent = "";
+    const typed = fd.get("email").trim().toLowerCase(), login = typed.includes("@") ? typed : `${typed}@${LOGIN_DOMAIN}`;
+    try { ls.set("na.lastEmail", typed); await fbRef.a.signInWithEmailAndPassword(fbRef.auth, login, fd.get("pw")); }
+    catch (err) {
+      const m = { "auth/invalid-credential": "Email ou mot de passe incorrect.", "auth/wrong-password": "Mot de passe incorrect.",
+        "auth/user-not-found": "Compte inconnu.", "auth/too-many-requests": "Trop d'essais, réessaie dans quelques minutes.",
+        "auth/network-request-failed": "Pas de connexion internet." };
+      $("#loginErr").textContent = m[err.code] || err.message;
+    }
+  };
+  $("#forgot").onclick = async () => {
+    const email = form.email.value.trim();
+    if (!email) { $("#loginErr").textContent = "Entre d'abord ton email au-dessus."; return; }
+    try { await fbRef.a.sendPasswordResetEmail(fbRef.auth, email); toast("Email de réinitialisation envoyé (regarde aussi les spams)."); }
+    catch (err) { $("#loginErr").textContent = err.message; }
+  };
+}
+function renderDenied() {
+  $("#tabs").hidden = true; $("#fab").hidden = true; $("#hdrSettings").hidden = true;
+  $("#main").innerHTML = `<div class="login"><div class="card"><h2>Accès refusé</h2>
+    <div class="small">Le compte <b>${esc(state.user?.email)}</b> n'est pas dans la liste autorisée des règles Firestore.</div>
+    <button class="btn" id="out">Se déconnecter</button></div></div>`;
+  $("#out").onclick = () => fbRef.a.signOut(fbRef.auth);
+}
+
+/* ---------- filtres ---------- */
+function matchPerson(i) {
+  const sel = state.filters.persons;
+  if (!sel.length || i._col === "shared") return true;
+  return sel.includes(i.person) || (i.person === "both" && (sel.includes("p1") || sel.includes("p2")));
+}
+function matchCommon(i) {
+  const f = state.filters;
+  if (!matchPerson(i)) return false;
+  if (f.category && i.category !== f.category) return false;
+  if (f.q) { const q = f.q.toLowerCase(); if (!(`${i.title} ${i.notes || ""}`.toLowerCase().includes(q))) return false; }
+  return true;
+}
+function personChips() {
+  return `<div class="chips scroll">${state.settings.people.map(p =>
+    `<button class="chip ${state.filters.persons.includes(p.id) ? "on" : ""}" data-act="fperson" data-id="${p.id}" style="--c:${esc(p.color)}"><i></i>${esc(p.name)}</button>`).join("")}</div>`;
+}
+function catSelect() {
+  const cats = financeOn() && !state.settings.categories.includes(FIN_CAT) ? [...state.settings.categories, FIN_CAT] : state.settings.categories;
+  return `<select data-f="category"><option value="">Toutes catégories</option>${cats.map(c =>
+    `<option ${state.filters.category === c ? "selected" : ""}>${esc(c)}</option>`).join("")}</select>`;
+}
+
+/* ---------- rendu ---------- */
+function render() {
+  const act = document.activeElement, keepId = act?.id, pos = act?.selectionStart;
+  document.querySelectorAll("#tabs button").forEach(b => b.classList.toggle("on", b.dataset.view === state.view));
+  $("#hdrSettings").classList.toggle("on", state.view === "settings");
+  $("#fab").hidden = state.view === "settings";
+  const titles = { tasks: "Tâches", agenda: "Notre Agenda", shop: "Courses", finance: "Finance", settings: "Réglages" };
+  $("#hTitle").textContent = titles[state.view];
+  const banner = DEMO ? `<div class="banner">Mode démo : les données restent sur cet appareil. Configure Firebase (voir le guide) pour partager avec ta femme.</div>` : "";
+  if (state.view === "finance" && !financeOn()) state.view = "tasks";
+  const v = { tasks: renderTasks, agenda: renderAgenda, shop: renderShop, finance: renderFinance, settings: renderSettings }[state.view] || renderTasks;
+  $("#main").innerHTML = banner + v();
+  if (keepId && document.getElementById(keepId)) {
+    const el = document.getElementById(keepId); el.focus();
+    try { if (pos != null) el.setSelectionRange(pos, pos); } catch {}
+  }
+}
+
+function rowHTML(i, opts = {}) {
+  const sh = i._col === "shared";
+  const p = sh ? { name: i.whoLabel || "—", color: SHARED_COLOR } : P(i.person), today = todayStr();
+  const isDone = isItemDone(i, opts.occ);
+  const late = i.type === "task" && !isDone && i.date && i.date < today;
+  const check = i.type === "bill" ? `<span class="check bill" aria-hidden="true">💶</span>` :
+    `<button class="check st-${isDone ? "done" : (i.status || "todo")}" data-act="toggle" data-id="${i.id}"${opts.occ ? ` data-d="${opts.occ}"` : ""} aria-label="Cocher">${isDone ? "✓" : ""}</button>`;
+  const time = opts.time ? `<div class="time">${i.time ? esc(i.time) + (i.endTime ? `<br>${esc(i.endTime)}` : "") : "Journée"}</div>` : "";
+  const prio = i.type === "task" && +i.priority > 0 && i.status !== "done" ? `<span class="prio p${+i.priority}">${+i.priority === 2 ? "URGENT" : "!"}</span>` : "";
+  const meta = [];
+  if (i.type === "bill") meta.push(`<span><b>${esc(eur(i.amount))}</b>${i.supplier ? " · " + esc(i.supplier) : ""}</span>`);
+  else if (i.type !== "shop") meta.push(`<span class="who" style="--c:${esc(p.color)}">${esc(p.name)}</span>`);
+  if (i.category && !opts.noCat) meta.push(`<span class="tag${i.category === SHARED_CAT ? " shared" : ""}">${i.category === SHARED_CAT ? "🏡 " : ""}${esc(i.category)}</span>`);
+  if (i.qty) meta.push(`<span>${esc(i.qty)}</span>`);
+  if (i.date && !opts.time) meta.push(`<span class="${late ? "late-t" : ""}">${i.date === today ? "Aujourd'hui" : esc(fmtDay(i.date))}${i.time ? " · " + esc(i.time) : ""}</span>`);
+  if (i.type === "event" && i.repeat?.freq) meta.push(`<span class="rep" title="Répétition">↻ ${esc(REPEAT_LABEL[i.repeat.freq + ":" + (i.repeat.interval || 1)] || "Répété")}</span>`);
+  if (i.type === "event" && i.endDate && i.endDate > i.date) meta.push(`<span>→ ${esc(fmtDay(i.endDate))}</span>`);
+  if (i.status === "doing") meta.push(`<span style="color:var(--warn);font-weight:600">En cours</span>`);
+  if (i.notes) meta.push(`<span title="Notes">📝</span>`);
+  return `<div class="row ${isDone ? "done" : ""} ${opts.conf ? "isconf" : ""}" style="--c:${i.type === "shop" ? "transparent" : i.type === "bill" ? FIN_COLOR : esc(p.color)}">
+    ${time}${check}
+    <div class="body" data-act="${i.type === "bill" ? "editbill" : "edit"}" data-id="${i.type === "bill" ? i.billId : i.id}"${opts.occ ? ` data-d="${opts.occ}"` : ""}>
+      <div class="title">${prio}${esc(i.title)}</div>
+      ${meta.length ? `<div class="meta">${meta.join("")}</div>` : ""}
+    </div></div>`;
+}
+
+/* --- Tâches --- */
+function renderTasks() {
+  const f = state.filters, today = todayStr(), tom = ymd(addDays(new Date(), 1)), wk = ymd(addDays(new Date(), 7));
+  let list = state.items.filter(i => i.type === "task" && matchCommon(i));
+  if (f.status === "open") list = list.filter(i => i.status !== "done");
+  else if (f.status !== "all") list = list.filter(i => i.status === f.status);
+  const byDue = (a, b) => (a.date || "9999") .localeCompare(b.date || "9999") || (a.time || "").localeCompare(b.time || "") || (+b.priority || 0) - (+a.priority || 0);
+  const sorters = {
+    due: byDue,
+    prio: (a, b) => (+b.priority || 0) - (+a.priority || 0) || byDue(a, b),
+    recent: (a, b) => (b.updatedAt || 0) - (a.updatedAt || 0),
+    person: (a, b) => P(a.person).name.localeCompare(P(b.person).name) || byDue(a, b),
+    cat: (a, b) => (a.category || "").localeCompare(b.category || "") || byDue(a, b)
+  };
+  list.sort(sorters[f.sort] || byDue);
+
+  let groups;
+  if (f.sort === "due") {
+    const order = ["En retard", "Aujourd'hui", "Demain", "Cette semaine", "Plus tard", "Sans date", "Fait"];
+    const key = i => i.status === "done" ? "Fait" : !i.date ? "Sans date" : i.date < today ? "En retard" : i.date === today ? "Aujourd'hui" : i.date === tom ? "Demain" : i.date < wk ? "Cette semaine" : "Plus tard";
+    groups = order.map(k => [k, list.filter(i => key(i) === k)]).filter(g => g[1].length);
+  } else if (f.sort === "person" || f.sort === "cat") {
+    const m = new Map();
+    list.forEach(i => { const k = f.sort === "person" ? (i._col === "shared" ? (i.whoLabel || "—") : P(i.person).name) : (i.category || "Sans catégorie"); if (!m.has(k)) m.set(k, []); m.get(k).push(i); });
+    groups = [...m];
+  } else groups = [["", list]];
+
+  const seg = (v, l) => `<button class="${f.status === v ? "on" : ""}" data-act="fstatus" data-v="${v}">${l}</button>`;
+  return `
+  <div class="filters">
+    <div class="quick"><input type="text" id="quickTask" placeholder="Ajout rapide d'une tâche…" enterkeyhint="done"><button class="btn primary" data-act="quickTask">OK</button></div>
+    ${personChips()}
+    <div class="seg">${seg("open", "À faire")}${seg("doing", "En cours")}${seg("done", "Fait")}${seg("all", "Tout")}</div>
+    <div class="frow">${catSelect()}
+      <select data-f="sort">${[["due", "Tri : échéance"], ["prio", "Tri : priorité"], ["person", "Tri : personne"], ["cat", "Tri : catégorie"], ["recent", "Tri : récent"]]
+        .map(([v, l]) => `<option value="${v}" ${f.sort === v ? "selected" : ""}>${l}</option>`).join("")}</select></div>
+    <input type="search" id="search" data-f="q" placeholder="Rechercher…" value="${esc(f.q)}">
+  </div>
+  ${groups.length ? groups.map(([k, arr]) => `${k ? `<div class="group ${k === "En retard" ? "late" : ""}"><span>${esc(k)}</span><span>${arr.length}</span></div>` : ""}
+    <div class="card">${arr.map(i => rowHTML(i, { noCat: f.sort === "cat" })).join("")}</div>`).join("")
+    : `<div class="empty">Rien ici 🎉<br><small>Ajoute une tâche avec le bouton +</small></div>`}`;
+}
+
+/* --- Agenda --- */
+function rangeOf(e) {
+  if (!e.time) return [0, 1440];
+  const s = toMin(e.time); let en = e.endTime ? toMin(e.endTime) : s + 60;
+  if (en <= s) en = 1440;
+  return [s, en];
+}
+const REPEAT_LABEL = { "daily:1": "chaque jour", "weekly:1": "chaque semaine", "weekly:2": "toutes les 2 sem.", "monthly:1": "chaque mois", "yearly:1": "chaque année" };
+function occursOn(i, ds) {
+  if (!i.date) return false;
+  const r = i.repeat;
+  if (!r || !r.freq) return ds >= i.date && ds <= (i.endDate && i.endDate > i.date ? i.endDate : i.date);
+  if (ds < i.date || (r.until && ds > r.until) || (i.exdates && i.exdates.includes(ds))) return false;
+  const a = parseYmd(i.date), b = parseYmd(ds), n = r.interval || 1, days = Math.round((b - a) / 864e5);
+  switch (r.freq) {
+    case "daily": return days % n === 0;
+    case "weekly": return days % 7 === 0 && (days / 7) % n === 0;
+    case "monthly": return b.getDate() === a.getDate() && ((b.getFullYear() - a.getFullYear()) * 12 + b.getMonth() - a.getMonth()) % n === 0;
+    case "yearly": return b.getMonth() === a.getMonth() && b.getDate() === a.getDate() && (b.getFullYear() - a.getFullYear()) % n === 0;
+  }
+  return false;
+}
+function involves(e, pid) { return e.person === pid || e.person === "both"; }
+function dayConflicts(evs) {
+  const ids = new Set(); let garde = false, double = false;
+  for (let a = 0; a < evs.length; a++) for (let b = a + 1; b < evs.length; b++) {
+    const A = evs[a], B = evs[b];
+    if (A.person === "kids" || B.person === "kids") continue;
+    const [s1, e1] = rangeOf(A), [s2, e2] = rangeOf(B);
+    if (!(s1 < e2 && s2 < e1)) continue;
+    const splitBusy = (involves(A, "p1") && involves(B, "p2")) || (involves(A, "p2") && involves(B, "p1"));
+    const same = ["p1", "p2"].some(p => involves(A, p) && involves(B, p));
+    if (splitBusy && !(A.person === "both" && B.person === "both")) { garde = garde || !same; }
+    if (same) double = true;
+    if (splitBusy || same) { ids.add(A.id); ids.add(B.id); }
+  }
+  return { ids, garde, double };
+}
+function isItemDone(i, occ) {
+  if (i.type === "event" && i.repeat?.freq) return !!occ && (i.doneDates || []).includes(occ);
+  return i.status === "done";
+}
+const DONE_KEEP_MS = 30 * 864e5;
+/* RDV cochés : grisés 30 jours, puis effacés définitivement */
+function purgeOldDone() {
+  const ids = state.items.filter(hiddenDone).map(i => i.id);
+  if (ids.length) store.removeMany(ids).then(() => console.log(`${ids.length} rendez-vous cochés depuis plus de 30 jours effacés`)).catch(e => console.warn("purge", e));
+}
+function hiddenDone(i) { return i.type === "event" && !i.repeat?.freq && i.status === "done" && i.doneAt && Date.now() - i.doneAt > DONE_KEEP_MS; }
+function dayItems(dateStr) {
+  const evs = state.items.filter(i => ((i.type === "event" && occursOn(i, dateStr) && !hiddenDone(i)) || (state.agenda.withTasks && i.type === "task" && i.date === dateStr)) && matchCommon(i));
+  if (!state.filters.category || state.filters.category === FIN_CAT) evs.push(...billsOn(dateStr));
+  evs.sort((a, b) => (a.time || "").localeCompare(b.time || "") || (a.type === "event" ? -1 : 1));
+  const allEvents = state.items.filter(i => i.type === "event" && i._col !== "shared" && i.time && occursOn(i, dateStr));
+  return { evs, conf: dayConflicts(allEvents) };
+}
+function dayBlock(ds, withHeader = true) {
+  const { evs, conf } = dayItems(ds), isToday = ds === todayStr();
+  const label = fmtDay(ds, { weekday: "long", day: "numeric", month: "long" });
+  const warn = [conf.garde ? "⚠ Vous êtes pris tous les deux en même temps — qui garde les enfants ?" : "", conf.double ? "⚠ Chevauchement dans l'agenda" : ""].filter(Boolean)
+    .map(t => `<div class="conf">${t}</div>`).join("");
+  return `<div class="day">
+    ${withHeader ? `<div class="dayh ${isToday ? "today" : ""}">${esc(label.charAt(0).toUpperCase() + label.slice(1))}${isToday ? " · aujourd'hui" : ""}<button class="add" data-act="addOn" data-d="${ds}" aria-label="Ajouter ce jour">+</button></div>` : ""}
+    ${warn}
+    ${evs.length ? `<div class="card">${evs.map(i => rowHTML(i, { time: true, conf: conf.ids.has(i.id), occ: ds })).join("")}</div>` : `<div class="noday">Rien de prévu</div>`}
+  </div>`;
+}
+const CAT_ICON = { "Anniversaires": "🎂", "Finance": "💶", "Sombreffe": "🏡", "Concerts & répètes": "🎵", "Musique": "🎵", "Presta / MDR": "💡",
+  "Rendez-vous": "🩺", "Enfants": "🎒", "Fériés & congés": "🌴", "Loisirs": "🎉", "Animaux": "🐾", "Maison": "🏠", "Admin": "📄" };
+const itemColor = i => i.type === "bill" ? FIN_COLOR : i._col === "shared" ? SHARED_COLOR : P(i.person).color;
+const itemIcon = i => i.type === "bill" ? "💶" : i._col === "shared" ? "🏡" : (CAT_ICON[i.category] || (i.type === "task" ? "✅" : "•"));
+const CAL_SVG = `<svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.8" stroke-linecap="round"><rect x="3" y="5" width="18" height="16" rx="3"/><path d="M3 10h18M8 3v4M16 3v4"/></svg>`;
+function recapList(list, withDate) {
+  return list.map(({ i, ds }) => `<div class="rl ${isItemDone(i, ds) ? "done" : ""}" data-act="${i.type === "bill" ? "editbill" : "edit"}" data-id="${i.type === "bill" ? i.billId : i.id}" data-d="${ds}">
+    <span class="ic">${itemIcon(i)}</span><span class="t">${esc(i.title)}</span>
+    <span class="d">${withDate ? esc(fmtDay(ds, { weekday: "short", day: "numeric", month: "short" })) : (i.time ? esc(i.time) + (i.endTime ? "–" + esc(i.endTime) : "") : i.type === "bill" ? esc(eur(i.amount)) : "Journée")}</span></div>`).join("");
+}
+function renderAgenda() {
+  const ag = state.agenda;
+  const modeSeg = `<div class="seg" style="flex:1"><button class="${ag.mode === "week" ? "on" : ""}" data-act="agmode" data-v="week">Semaine</button><button class="${ag.mode === "month" ? "on" : ""}" data-act="agmode" data-v="month">Mois</button></div>`;
+  const active = state.filters.persons.length || state.filters.category || !ag.withTasks;
+  const filters = `<div class="filters"><div class="frow2">${modeSeg}<button class="ftoggle ${ag.showFilters || active ? "on" : ""}" data-act="agfilters" aria-label="Filtres"><svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round"><path d="M4 6h16M7 12h10M10 18h4"/></svg></button></div>
+    ${ag.showFilters ? `${personChips()}<div class="frow">${catSelect()}<label class="toggle"><input type="checkbox" data-act="agtasks" ${ag.withTasks ? "checked" : ""}> Inclure les tâches</label></div>` : ""}</div>`;
+  const nav = lbl => `<div class="mnav"><button class="navb" data-act="agprev" aria-label="Précédent">‹</button><div class="lbl" data-act="agtoday">${CAL_SVG}${esc(lbl)}</div><button class="navb" data-act="agnext" aria-label="Suivant">›</button></div>`;
+  if (ag.mode === "week") {
+    const s0 = startOfWeek(ag.anchor), e = addDays(s0, 6);
+    const lbl = `${s0.getDate()} ${s0.toLocaleDateString("fr-BE", { month: "short" })} – ${e.getDate()} ${e.toLocaleDateString("fr-BE", { month: "short" })}`;
+    return `${filters}${nav(lbl)}${[0, 1, 2, 3, 4, 5, 6].map(n => dayBlock(ymd(addDays(s0, n)))).join("")}`;
+  }
+  const a = ag.anchor, first = new Date(a.getFullYear(), a.getMonth(), 1), gs = startOfWeek(first), lastDay = new Date(a.getFullYear(), a.getMonth() + 1, 0);
+  const lbl = first.toLocaleDateString("fr-BE", { month: "long", year: "numeric" });
+  let grid = "";
+  for (let w = 0; w < 6; w++) {
+    const wkStart = addDays(gs, w * 7);
+    if (w === 5 && wkStart.getMonth() !== a.getMonth()) break;
+    let openDs = null;
+    for (let n = 0; n < 7; n++) {
+      const d = addDays(wkStart, n), ds = ymd(d);
+      const { evs, conf } = dayItems(ds);
+      const icon = evs.map(i => i.type === "bill" ? "💶" : i._col === "shared" ? "🏡" : ["Anniversaires", "Concerts & répètes", "Musique", "Fériés & congés"].includes(i.category) ? CAT_ICON[i.category] : "").find(Boolean);
+      const colors = [...new Set(evs.filter(i => !icon || itemIcon(i) !== icon).map(itemColor))].slice(0, icon ? 2 : 3);
+      const mk = (icon ? `<span class="ico">${icon}</span>` : "") + colors.map(c => `<i style="--c:${esc(c)}"></i>`).join("");
+      if (ds === ag.open) openDs = ds;
+      grid += `<button class="cell ${d.getMonth() !== a.getMonth() ? "out" : ""} ${ds === todayStr() ? "today" : ""} ${ds === ag.open ? "sel" : ""} ${conf.ids.size ? "conf" : ""}" data-act="agsel" data-d="${ds}" aria-expanded="${ds === ag.open}" aria-label="${esc(fmtDay(ds, { weekday: "long", day: "numeric", month: "long" }))}, ${evs.length} élément(s)">
+        <span class="n">${d.getDate()}</span><span class="mk">${mk}</span></button>`;
+    }
+    if (openDs) {
+      const L = fmtDay(openDs, { weekday: "long", day: "numeric", month: "long", year: "numeric" });
+      grid += `<div class="dayopen"><div class="dayh">${esc(L.charAt(0).toUpperCase() + L.slice(1))}<button class="add" data-act="addOn" data-d="${openDs}" aria-label="Ajouter ce jour">+</button></div>${dayBlock(openDs, false)}</div>`;
+    }
+  }
+  const legend = [...state.settings.people.map(p => [p.name, p.color]), ...(state.items.some(i => i._col === "shared") || store?.space ? [[SHARED_CAT, SHARED_COLOR]] : []), ...(financeOn() ? [[FIN_CAT, FIN_COLOR]] : [])]
+    .map(([n, c]) => `<span><i style="--c:${esc(c)}"></i>${esc(n)}</span>`).join("");
+  // Aujourd'hui
+  const t = todayStr(), todayL = dayItems(t).evs.map(i => ({ i, ds: t }));
+  const tasksToday = state.items.filter(i => i.type === "task" && i.status !== "done" && i.date && i.date <= t && !(ag.withTasks && i.date === t)).map(i => ({ i, ds: i.date }));
+  // Ce mois-ci : temps forts
+  const hl = [];
+  for (let d = new Date(first); d <= lastDay; d = addDays(d, 1)) {
+    const ds = ymd(d); if (ds < t && a.getMonth() === new Date().getMonth()) continue;
+    dayItems(ds).evs.forEach(i => { if (i.type === "bill" || i._col === "shared" || ["Anniversaires", "Concerts & répètes", "Musique", "Fériés & congés"].includes(i.category) || i.endDate) hl.push({ i, ds }); });
+  }
+  const tl = fmtDay(t, { weekday: "long", day: "numeric", month: "long" });
+  return `${filters}${nav(lbl.charAt(0).toUpperCase() + lbl.slice(1))}
+    <div class="month" id="monthGrid">${["Lun", "Mar", "Mer", "Jeu", "Ven", "Sam", "Dim"].map(x => `<div class="dn">${x}</div>`).join("")}${grid}</div>
+    <div class="legend">${legend}</div>
+    <div class="recap"><h3>${CAL_SVG}Aujourd'hui<small>${esc(tl)}</small></h3>
+      ${todayL.length || tasksToday.length ? recapList(todayL, false) + (tasksToday.length ? recapList(tasksToday.slice(0, 5), true) : "") : `<div class="rl"><span class="ic">☕</span><span class="t" style="color:var(--mute)">Rien de prévu aujourd'hui</span></div>`}</div>
+    ${hl.length ? `<div class="recap"><h3>${CAL_SVG}Ce mois-ci</h3>${recapList(hl.slice(0, 8), true)}${hl.length > 8 ? `<div class="small" style="padding-top:6px">+ ${hl.length - 8} autre(s)</div>` : ""}</div>` : ""}`;
+}
+
+/* --- Courses --- */
+function renderShop() {
+  const items = state.items.filter(i => i.type === "shop");
+  const cats = state.settings.shopCategories;
+  const open = items.filter(i => i.status !== "done"), done = items.filter(i => i.status === "done");
+  const groups = [...cats, ...new Set(open.map(i => i.category).filter(c => !cats.includes(c)))]
+    .map(c => [c, open.filter(i => (i.category || "Autre") === c)]).filter(g => g[1].length);
+  const lastCat = ls.get("na.shopcat", "Autre");
+  return `
+    <div class="quick"><input type="text" id="quickShop" placeholder="Ajouter un article…" enterkeyhint="done">
+      <button class="btn primary" data-act="quickShop">+</button></div>
+    <div class="frow" style="margin-bottom:6px"><select id="quickShopCat">${cats.map(c => `<option ${c === lastCat ? "selected" : ""}>${esc(c)}</option>`).join("")}</select></div>
+    ${groups.length ? groups.map(([c, arr]) => `<div class="group"><span>${esc(c)}</span><span>${arr.length}</span></div>
+      <div class="card">${arr.map(i => rowHTML(i, { noCat: true })).join("")}</div>`).join("") : `<div class="empty">La liste est vide 🛒</div>`}
+    ${done.length ? `<div class="group"><span>Dans le caddie (${done.length})</span><button class="btn small" data-act="clearShop">Retirer</button></div>
+      <div class="card">${done.map(i => rowHTML(i, { noCat: true })).join("")}</div>` : ""}`;
+}
+
+/* --- Réglages --- */
+function renderSettings() {
+  const s = state.settings;
+  const catList = (key) => `<div class="chips">${s[key].map((c, n) => `<span class="catchip">${esc(c)}<button data-act="delcat" data-k="${key}" data-n="${n}" aria-label="Supprimer">×</button></span>`).join("")}</div>
+    <div class="quick" style="margin:0"><input type="text" id="new-${key}" placeholder="Nouvelle…"><button class="btn" data-act="addcat" data-k="${key}">Ajouter</button></div>`;
+  return `
+  <div class="sect"><h2>Compte</h2><div class="card">
+    ${DEMO ? `<div>Mode démo (pas de compte). Les données restent sur cet appareil.</div>` :
+      `<div>Connecté : <b>${esc((state.user?.email || "").replace("@" + LOGIN_DOMAIN, ""))}</b> · agenda « ${esc(SPACES[spaceOf(state.user?.email)].label)} »</div>
+       <div class="small">La catégorie <b>🏡 ${SHARED_CAT}</b> est partagée avec l'autre foyer. Tout le reste est privé.</div>
+       <button class="btn" data-act="logout">Se déconnecter</button>`}
+    <label class="lab">Sur cet appareil, je suis
+      <select data-act="me">${["p1", "p2"].map(id => `<option value="${id}" ${state.me === id ? "selected" : ""}>${esc(P(id).name)}</option>`).join("")}</select></label>
+    <div class="small">Sert à pré-remplir « Pour qui » quand tu ajoutes quelque chose.</div>
+  </div></div>
+  ${notifSection()}
+  <div class="sect"><h2>Personnes</h2><div class="card">
+    ${s.people.map((p, n) => `<div class="prow"><input type="color" value="${esc(p.color)}" data-act="pcolor" data-n="${n}"><input type="text" value="${esc(p.name)}" data-act="pname" data-n="${n}"></div>`).join("")}
+  </div></div>
+  <div class="sect"><h2>Catégories</h2><div class="card">${catList("categories")}</div></div>
+  <div class="sect"><h2>Rayons des courses</h2><div class="card">${catList("shopCategories")}</div></div>
+  <div class="sect"><h2>Sauvegarde</h2><div class="card">
+    <div class="frow"><button class="btn" data-act="export">Exporter (JSON)</button><button class="btn" data-act="import">Importer</button></div>
+    <button class="btn danger" data-act="purgeDone">Supprimer toutes les tâches faites</button>
+    <input type="file" id="importFile" accept="application/json" hidden>
+  </div></div>
+  <div class="small" style="text-align:center">Astuce iPhone : Safari → bouton Partager → « Sur l'écran d'accueil ».</div>
+  <div class="small" style="text-align:center;margin-top:6px">Version ${esc(APP_VERSION)}${location.pathname.endsWith("beta.html") ? " · <b>BÊTA</b>" : ""}</div>`;
+}
+
+/* ---------- Finance (factures, à venir, prévision) ---------- */
+const financeOn = () => DEMO || (store && store.space === "famille");
+const eur = n => (+n || 0).toLocaleString("fr-BE", { style: "currency", currency: "EUR", maximumFractionDigits: (+n % 1) ? 2 : 0 });
+const parseAmt = v => { const n = parseFloat(String(v || "").replace(/\s|€/g, "").replace(",", ".")); return isFinite(n) ? Math.round(n * 100) / 100 : 0; };
+const normSup = s => String(s || "").toLowerCase().normalize("NFD").replace(/[̀-ͯ]/g, "").replace(/[^a-z0-9]+/g, " ").trim();
+function addMonthsStr(ds, n) {
+  const d = parseYmd(ds), day = d.getDate();
+  const x = new Date(d.getFullYear(), d.getMonth() + n, 1);
+  const last = new Date(x.getFullYear(), x.getMonth() + 1, 0).getDate();
+  x.setDate(Math.min(day, last)); return ymd(x);
+}
+const MONTHS_LABEL = { 1: "chaque mois", 2: "tous les 2 mois", 3: "tous les 3 mois", 6: "tous les 6 mois", 12: "chaque année" };
+const monthsLabel = m => MONTHS_LABEL[m] || `tous les ${m} mois`;
+const bills = () => state.fin.filter(f => f.kind === "bill" && f.active !== false);
+const invoices = () => state.fin.filter(f => f.kind === "invoice");
+function billOccurrences(b, fromDs, toDs) {
+  const out = []; if (!b.next || !b.months) return out;
+  let ds = b.next, k = 0;
+  while (ds <= toDs && k < 400) { if (ds >= fromDs) out.push(ds); k++; ds = addMonthsStr(b.next, k * b.months); }
+  return out;
+}
+function billsOn(ds) {
+  if (!financeOn()) return [];
+  return bills().filter(b => billOccurrences(b, ds, ds).length).map(b => ({
+    id: `bill_${b.id}_${ds}`, billId: b.id, type: "bill", title: b.label || b.supplier, amount: b.amount, supplier: b.label ? b.supplier : "",
+    date: ds, time: "", category: FIN_CAT, person: "both", status: b.next < todayStr() && ds === b.next ? "todo" : ""
+  }));
+}
+function guessFinCat(sup) {
+  const t = normSup(sup);
+  const map = [[/engie|luminus|totalenergies|mega|eneco|electr|gaz|mazout|pellet/, "Énergie"], [/swde|vivaqua|eau|inbw|cile/, "Eau"],
+    [/ethias|axa|ag insurance|\bag\b|ap assurance|baloise|allianz|dkv|assur|mutuelle|mutualite|solidaris|partenamut/, "Assurance"],
+    [/proximus|orange|telenet|voo|base|scarlet|internet|gsm/, "Télécom & internet"], [/spf|precompte|impot|taxe|commune|region|tva/, "Impôts & taxes"],
+    [/garage|controle|pneu|carburant|essence|diesel|bmw|ford|auto|voiture|mazda/, "Voiture"], [/ecole|academie|stage|creche|cantine|danse|gym/, "École & enfants"],
+    [/pharma|medecin|dentiste|kine|hopital|docteur/, "Santé"], [/banque|belfius|ing|kbc|bnp|credit|pret|emprunt/, "Banque & crédit"],
+    [/netflix|spotify|disney|amazon|abonnement|youtube|apple|google/, "Abonnements"], [/bois|leroy|brico|ikea|plombier|chauffagiste|toiture/, "Maison"]];
+  for (const [re, c] of map) if (re.test(t)) return c;
+  return "Autre";
+}
+function unusual(inv) {
+  const prev = invoices().filter(x => x.id !== inv.id && normSup(x.supplier) === normSup(inv.supplier) && x.date < inv.date);
+  if (prev.length < 2) return 0;
+  const avg = prev.reduce((a, x) => a + (+x.amount || 0), 0) / prev.length;
+  return avg > 0 && inv.amount > avg * 1.3 ? Math.round((inv.amount / avg - 1) * 100) : 0;
+}
+function suggestions() {
+  const dismissed = ls.get("na.sugDismiss", []), today = todayStr();
+  const linked = new Set(bills().map(b => normSup(b.supplier || b.label)));
+  const groups = {};
+  invoices().forEach(i => { const k = normSup(i.supplier); if (!k || i.billId) return; (groups[k] = groups[k] || []).push(i); });
+  const out = [];
+  for (const [k, arr] of Object.entries(groups)) {
+    if (arr.length < 2 || linked.has(k) || dismissed.includes(k)) continue;
+    arr.sort((a, b) => a.date.localeCompare(b.date));
+    const gaps = arr.slice(1).map((x, n) => (parseYmd(x.date) - parseYmd(arr[n].date)) / 864e5).filter(g => g > 0).sort((a, b) => a - b);
+    if (!gaps.length) continue;
+    const med = gaps[Math.floor(gaps.length / 2)];
+    if (med < 20) continue;
+    const months = [1, 2, 3, 4, 6, 12].reduce((best, m) => Math.abs(m * 30.44 - med) < Math.abs(best * 30.44 - med) ? m : best, 1);
+    const recent = arr.slice(-3), amount = Math.round(recent.reduce((a, x) => a + (+x.amount || 0), 0) / recent.length * 100) / 100;
+    let next = addMonthsStr(arr[arr.length - 1].date, months), g = 0;
+    while (next < today && g++ < 50) next = addMonthsStr(next, months);
+    out.push({ key: k, supplier: arr[arr.length - 1].supplier, category: arr[arr.length - 1].category || guessFinCat(k), months, amount, next, count: arr.length });
+  }
+  return out;
+}
+function forecast() {
+  const now = new Date(), months = [];
+  for (let n = 0; n < 12; n++) {
+    const a = new Date(now.getFullYear(), now.getMonth() + n, 1), b = new Date(now.getFullYear(), now.getMonth() + n + 1, 0);
+    const from = ymd(a), to = ymd(b), lines = [];
+    bills().forEach(x => billOccurrences(x, n === 0 ? ymd(new Date(now.getFullYear(), now.getMonth(), 1)) : from, to).forEach(() => lines.push({ label: x.label || x.supplier, amount: +x.amount || 0 })));
+    invoices().filter(i => !i.paid && i.due && i.due >= from && i.due <= to).forEach(i => lines.push({ label: i.supplier, amount: +i.amount || 0 }));
+    months.push({ label: a.toLocaleDateString("fr-BE", { month: "short" }) + (a.getMonth() === 0 || n === 0 ? " " + String(a.getFullYear()).slice(2) : ""), total: lines.reduce((s, l) => s + l.amount, 0), lines });
+  }
+  const avg = months.reduce((s, m) => s + m.total, 0) / 12;
+  months.forEach(m => m.heavy = m.total > 0 && m.total > avg * 1.5);
+  return { months, avg, max: Math.max(1, ...months.map(m => m.total)) };
+}
+const provision = () => bills().reduce((s, b) => s + (+b.amount || 0) / (b.months || 12), 0);
+function dueLabel(ds) {
+  const n = Math.round((parseYmd(ds) - parseYmd(todayStr())) / 864e5);
+  if (n < 0) return [`en retard de ${-n} j`, "late"];
+  if (n === 0) return ["aujourd'hui", "late"];
+  if (n <= 7) return [`dans ${n} j`, "soon"];
+  return [fmtDay(ds), ""];
+}
+function renderFinance() {
+  const tab = state.finTab;
+  const seg = (v, l) => `<button class="${tab === v ? "on" : ""}" data-act="fintab" data-v="${v}">${l}</button>`;
+  const head = `<div class="seg" style="margin:4px 0 12px">${seg("upcoming", "À venir")}${seg("invoices", "Factures")}${seg("forecast", "Prévision")}</div>`;
+  const today = todayStr(), in30 = ymd(addDays(new Date(), 30));
+  if (tab === "invoices") {
+    const year = state.finYear, cat = state.finCat;
+    const years = [...new Set([String(new Date().getFullYear()), ...invoices().map(i => (i.date || "").slice(0, 4)).filter(Boolean)])].sort().reverse();
+    let list = invoices().filter(i => (i.date || "").startsWith(year) && (!cat || i.category === cat)).sort((a, b) => (b.date || "").localeCompare(a.date || ""));
+    const total = list.reduce((s, i) => s + (+i.amount || 0), 0), unpaid = invoices().filter(i => !i.paid);
+    const byMonth = {}; list.forEach(i => { const k = (i.date || "").slice(0, 7); (byMonth[k] = byMonth[k] || []).push(i); });
+    const row = i => { const odd = unusual(i); return `<div class="row" style="--c:${FIN_COLOR}"><div class="body frow2" data-act="editinv" data-id="${i.id}">
+      <div class="body"><div class="title">${esc(i.supplier || "—")}</div><div class="meta"><span>${esc(fmtDay(i.date))}</span>${i.category ? `<span class="tag">${esc(i.category)}</span>` : ""}
+      ${!i.paid ? `<span class="pill unpaid">À payer${i.due ? " · " + esc(dueLabel(i.due)[0]) : ""}</span>` : ""}${odd ? `<span class="pill odd">⚠ +${odd} % vs habitude</span>` : ""}${i.note ? "<span>📝</span>" : ""}</div></div>
+      <div class="amt">${esc(eur(i.amount))}</div></div></div>`; };
+    return `${head}
+      <div class="quick"><input type="text" id="quickInv" placeholder="Ex. : Engie 412,50" enterkeyhint="done"><button class="btn primary" data-act="quickInv">OK</button></div>
+      <div class="frow" style="margin-bottom:10px"><select data-f="finYear">${years.map(y => `<option ${y === year ? "selected" : ""}>${y}</option>`).join("")}</select>
+        <select data-f="finCat"><option value="">Toutes catégories</option>${FIN_CATS.map(c => `<option ${c === cat ? "selected" : ""}>${esc(c)}</option>`).join("")}</select></div>
+      <div class="kpis"><div class="kpi"><div class="v">${esc(eur(total))}</div><div class="l">Total ${esc(year)}${cat ? " · " + esc(cat) : ""}</div></div>
+        <div class="kpi"><div class="v" style="${unpaid.length ? "color:var(--warn)" : ""}">${esc(eur(unpaid.reduce((s, i) => s + (+i.amount || 0), 0)))}</div><div class="l">${unpaid.length} facture(s) à payer</div></div></div>
+      ${Object.keys(byMonth).length ? Object.entries(byMonth).map(([k, arr]) => `<div class="group"><span>${esc(parseYmd(k + "-01").toLocaleDateString("fr-BE", { month: "long", year: "numeric" }))}</span><span>${esc(eur(arr.reduce((s, i) => s + (+i.amount || 0), 0)))}</span></div>
+        <div class="card">${arr.map(row).join("")}</div>`).join("") : `<div class="empty">Aucune facture ${esc(year)}.<br><small>Encode-les au fur et à mesure avec le champ au-dessus ou le bouton +</small></div>`}`;
+  }
+  if (tab === "forecast") {
+    const fc = forecast(), heavy = fc.months.filter(m => m.heavy);
+    const yr = String(new Date().getFullYear()), cats = {};
+    invoices().filter(i => (i.date || "").startsWith(yr)).forEach(i => cats[i.category || "Autre"] = (cats[i.category || "Autre"] || 0) + (+i.amount || 0));
+    const cmax = Math.max(1, ...Object.values(cats));
+    return `${head}
+      <div class="kpis"><div class="kpi"><div class="v">${esc(eur(Math.ceil(provision())))}</div><div class="l">À mettre de côté / mois</div></div>
+        <div class="kpi"><div class="v">${esc(eur(Math.round(fc.avg)))}</div><div class="l">Moyenne prévue / mois</div></div></div>
+      ${heavy.length ? `<div class="conf" style="margin-bottom:10px">⚠ Mois lourds : ${heavy.map(m => esc(m.label)).join(", ")}</div>` : ""}
+      <div class="group"><span>12 prochains mois</span><span>${esc(eur(fc.months.reduce((s, m) => s + m.total, 0)))}</span></div>
+      <div class="card">${fc.months.map(m => `<div class="fbar ${m.heavy ? "heavy" : ""}"><span class="m">${esc(m.label)}</span><span class="track"><span class="fill" style="width:${(m.total / fc.max * 100).toFixed(1)}%"></span></span><span class="amt" style="text-align:right">${esc(eur(Math.round(m.total)))}</span>
+        ${m.heavy || (m.lines.length && m.lines.length <= 3) ? `<span class="why">${esc(m.lines.sort((a, b) => b.amount - a.amount).slice(0, 4).map(l => `${l.label} ${eur(l.amount)}`).join(" · "))}</span>` : ""}</div>`).join("")}</div>
+      <div class="small" style="margin:8px 2px 0">Basé sur tes charges « À venir » et les factures à payer. Plus tu en encodes, plus la prévision est juste.</div>
+      ${Object.keys(cats).length ? `<div class="group"><span>Dépensé en ${yr} par catégorie</span><span>${esc(eur(Object.values(cats).reduce((a, b) => a + b, 0)))}</span></div>
+      <div class="card">${Object.entries(cats).sort((a, b) => b[1] - a[1]).map(([c, v]) => `<div class="fbar" style="grid-template-columns:110px 1fr 78px"><span class="m">${esc(c)}</span><span class="track"><span class="fill" style="width:${(v / cmax * 100).toFixed(1)}%"></span></span><span class="amt" style="text-align:right">${esc(eur(Math.round(v)))}</span></div>`).join("")}</div>` : ""}`;
+  }
+  // À venir
+  const list = bills().slice().sort((a, b) => (a.next || "").localeCompare(b.next || ""));
+  const soon = list.filter(b => b.next && b.next <= in30).reduce((s, b) => s + (+b.amount || 0) * billOccurrences(b, "0000-00-00", in30).length, 0);
+  const sugs = suggestions();
+  return `${head}
+    <div class="kpis"><div class="kpi"><div class="v">${esc(eur(Math.round(soon)))}</div><div class="l">Dans les 30 prochains jours</div></div>
+      <div class="kpi"><div class="v">${esc(eur(Math.ceil(provision())))}</div><div class="l">À mettre de côté / mois</div></div></div>
+    ${sugs.map(g => `<div class="sug">💡 <b>${esc(g.supplier)}</b> revient ${esc(monthsLabel(g.months))} (${g.count} factures, ~${esc(eur(g.amount))}).<br>Créer une charge « à venir », prochaine le ${esc(fmtDay(g.next))} ?
+      <div class="frow"><button class="btn small primary" data-act="sugok" data-k="${esc(g.key)}">Créer</button><button class="btn small" data-act="sugno" data-k="${esc(g.key)}">Non merci</button></div></div>`).join("")}
+    ${list.length ? `<div class="card">${list.map(b => { const [lbl, cls] = dueLabel(b.next); return `<div class="row" style="--c:${FIN_COLOR}"><div class="body frow2">
+      <div class="body" data-act="editbill" data-id="${b.id}"><div class="title">${esc(b.label || b.supplier)}</div><div class="meta"><span class="pill ${cls}">${esc(lbl)}</span><span>${esc(monthsLabel(b.months))}</span>${b.category ? `<span class="tag">${esc(b.category)}</span>` : ""}</div></div>
+      <div style="text-align:right"><div class="amt">${esc(eur(b.amount))}</div><button class="btn small" data-act="billpaid" data-id="${b.id}" style="margin-top:4px">Payée ✓</button></div></div></div>`; }).join("")}</div>`
+      : `<div class="empty">Aucune charge à venir.<br><small>Ajoute tes grosses charges récurrentes (assurances, précompte, eau, entretien chaudière…) : elles apparaîtront dans l'agenda et dans la prévision.</small></div>`}
+    <button class="btn" data-act="newbill" style="width:100%;margin-top:12px">+ Nouvelle charge à venir</button>`;
+}
+
+/* --- éditeur Finance --- */
+const finEd = $("#finEd"), finForm = $("#finForm");
+let finEditing = null;
+function fillFinCats(cur) { const opts = [...FIN_CATS]; if (cur && !opts.includes(cur)) opts.push(cur); finForm.fcat.innerHTML = opts.map(c => `<option ${c === cur ? "selected" : ""}>${esc(c)}</option>`).join(""); }
+function syncFinForm() {
+  finForm.classList.toggle("nodue", finForm.paid.value === "1");
+  finForm.classList.toggle("nocustom", finForm.months.value !== "custom");
+}
+function openInvoice(inv, preset = {}) {
+  finEditing = inv ? inv.id : null;
+  const o = inv || { supplier: "", amount: "", date: todayStr(), category: "", paid: true, due: "", note: "", billId: "", ...preset };
+  finForm.dataset.kind = "invoice"; $("#finTitle").textContent = inv ? "Modifier la facture" : "Nouvelle facture";
+  finForm.supplier.value = o.supplier || ""; finForm.amount.value = o.amount !== "" && o.amount != null ? String(o.amount).replace(".", ",") : "";
+  finForm.date.value = o.date || todayStr(); finForm.paid.value = o.paid === false ? "0" : "1"; finForm.due.value = o.due || ""; finForm.fnote.value = o.note || "";
+  fillFinCats(o.category || guessFinCat(o.supplier));
+  finForm.billId.innerHTML = `<option value="">— aucune —</option>` + bills().map(b => `<option value="${b.id}" ${b.id === o.billId ? "selected" : ""}>${esc(b.label || b.supplier)}</option>`).join("");
+  $("#finDel").hidden = !inv; syncFinForm(); finEd.showModal();
+}
+function openBill(b, preset = {}) {
+  finEditing = b ? b.id : null;
+  const o = b || { label: "", supplier: "", amount: "", months: 12, next: "", category: "", note: "", ...preset };
+  finForm.dataset.kind = "bill"; $("#finTitle").textContent = b ? "Charge à venir" : "Nouvelle charge à venir";
+  finForm.label.value = o.label || ""; finForm.supplier.value = o.supplier || ""; finForm.amount.value = o.amount !== "" && o.amount != null ? String(o.amount).replace(".", ",") : "";
+  const std = ["1", "2", "3", "6", "12"].includes(String(o.months));
+  finForm.months.value = std ? String(o.months) : "custom"; finForm.customMonths.value = std ? 4 : o.months;
+  finForm.next.value = o.next || ""; finForm.fnote.value = o.note || "";
+  fillFinCats(o.category || guessFinCat(o.supplier || o.label));
+  $("#finDel").hidden = !b; syncFinForm(); finEd.showModal();
+}
+finForm.paid.onchange = syncFinForm; finForm.months.onchange = syncFinForm;
+finForm.supplier.addEventListener("change", () => { if (!finEditing) fillFinCats(guessFinCat(finForm.supplier.value || finForm.label.value)); });
+$("#finClose").onclick = () => finEd.close();
+finEd.addEventListener("click", e => { if (e.target === finEd) finEd.close(); });
+async function afterInvoiceLinked(billId, inv) {
+  const b = state.fin.find(x => x.id === billId); if (!b) return;
+  const linked = invoices().filter(i => i.billId === billId && i.id !== inv.id).concat([inv]).sort((a, c) => (a.date || "").localeCompare(c.date || "")).slice(-3);
+  const est = Math.round(linked.reduce((s, i) => s + (+i.amount || 0), 0) / linked.length * 100) / 100;
+  const next = b.next ? addMonthsStr(b.next, b.months || 12) : addMonthsStr(inv.date, b.months || 12);
+  await store.finUpdate(billId, { next, amount: est });
+  toast(`« ${b.label || b.supplier} » : prochaine échéance le ${fmtDay(next)} (~${eur(est)})`, 4000);
+}
+finForm.onsubmit = async e => {
+  e.preventDefault();
+  const amount = parseAmt(finForm.amount.value);
+  try {
+    if (finForm.dataset.kind === "invoice") {
+      const o = { kind: "invoice", supplier: finForm.supplier.value.trim(), amount, date: finForm.date.value || todayStr(), category: finForm.fcat.value,
+        paid: finForm.paid.value === "1", due: finForm.paid.value === "1" ? "" : finForm.due.value, note: finForm.fnote.value.trim(), billId: finForm.billId.value };
+      if (!o.supplier && !amount) return;
+      const was = finEditing ? state.fin.find(x => x.id === finEditing) : null;
+      finEd.close();
+      if (finEditing) await store.finUpdate(finEditing, o); else { const id = await store.finAdd(o); o.id = id; }
+      if (o.billId && (!was || was.billId !== o.billId)) await afterInvoiceLinked(o.billId, { ...o, id: o.id || finEditing });
+      const odd = unusual({ ...o, id: o.id || finEditing }); if (odd) toast(`⚠ ${o.supplier} : ${odd} % plus cher que d'habitude`, 5000);
+    } else {
+      const months = finForm.months.value === "custom" ? Math.max(1, +finForm.customMonths.value || 1) : +finForm.months.value;
+      const o = { kind: "bill", label: finForm.label.value.trim(), supplier: finForm.supplier.value.trim(), amount, months, next: finForm.next.value || todayStr(),
+        category: finForm.fcat.value, note: finForm.fnote.value.trim(), active: true };
+      if (!o.label && !o.supplier) return;
+      finEd.close();
+      if (finEditing) await store.finUpdate(finEditing, o); else await store.finAdd(o);
+    }
+  } catch (err) { fail(err); }
+};
+$("#finDel").onclick = () => { if (finEditing && confirm("Supprimer ?")) { store.finRemove(finEditing).catch(fail); finEd.close(); } };
+function quickInvoice() {
+  const inp = $("#quickInv"), t = inp.value.trim(); if (!t) return;
+  const m = t.match(/^(.*?)[\s:]*(\d+(?:[ .]\d{3})*(?:[.,]\d{1,2})?)\s*€?\s*$/);
+  if (!m) { openInvoice(null, { supplier: t }); inp.value = ""; return; }
+  const supplier = m[1].trim(), amount = parseAmt(m[2].replace(/[ .](?=\d{3}\b)/g, ""));
+  const o = { kind: "invoice", supplier, amount, date: todayStr(), category: guessFinCat(supplier), paid: true, due: "", note: "", billId: "" };
+  const bill = bills().find(b => normSup(b.supplier) && normSup(b.supplier) === normSup(supplier));
+  store.finAdd(o).then(async id => {
+    toast(`${supplier || "Facture"} · ${eur(amount)} ajoutée`);
+    if (bill && confirm(`Rattacher à la charge « ${bill.label || bill.supplier} » et passer à l'échéance suivante ?`)) { await store.finUpdate(id, { billId: bill.id }); await afterInvoiceLinked(bill.id, { ...o, id, billId: bill.id }); }
+    const odd = unusual({ ...o, id }); if (odd) toast(`⚠ ${supplier} : ${odd} % plus cher que d'habitude`, 5000);
+  }).catch(fail);
+  inp.value = "";
+}
+
+/* ---------- éditeur ---------- */
+const ed = $("#ed"), form = $("#edForm");
+let editing = null, editingOcc = null, edPerson = "p1";
+function fillCats(type, current) {
+  const list = type === "shop" ? state.settings.shopCategories : state.settings.categories;
+  const opts = [...list]; if (current && !opts.includes(current)) opts.push(current);
+  form.category.innerHTML = (type === "shop" ? "" : `<option value="">—</option>`) + opts.map(c => `<option ${c === current ? "selected" : ""}>${esc(c)}</option>`).join("");
+}
+function paintPersons() {
+  $("#edPerson").innerHTML = state.settings.people.map(p => `<button type="button" class="chip ${edPerson === p.id ? "on" : ""}" data-id="${p.id}" style="--c:${esc(p.color)}"><i></i>${esc(p.name)}</button>`).join("");
+}
+function setType(t) {
+  form.dataset.type = t;
+  document.querySelectorAll("#edType button").forEach(b => b.classList.toggle("on", b.dataset.type === t));
+  fillCats(t, form.category.value || (t === "shop" ? ls.get("na.shopcat", "Autre") : ""));
+}
+function openEditor(item, defaults = {}, occ = null) {
+  editing = item ? item.id : null; editingOcc = occ;
+  const it = item || { type: "task", title: "", person: state.me, category: "", date: "", time: "", endTime: "", priority: 0, status: "todo", notes: "", qty: "", ...defaults };
+  $("#edTitle").textContent = item ? "Modifier" : "Nouveau";
+  $("#edDel").hidden = !item; $("#edDup").hidden = !item;
+  form.title.value = it.title || ""; form.date.value = it.date || ""; form.time.value = it.time || ""; form.endTime.value = it.endTime || "";
+  form.priority.value = String(it.priority || 0); form.status.value = it.status || "todo"; form.notes.value = it.notes || ""; form.qty.value = it.qty || "";
+  form.endDate.value = it.endDate || "";
+  const rv = it.repeat?.freq ? `${it.repeat.freq}:${it.repeat.interval || 1}` : "";
+  if (rv && ![...form.repeat.options].some(o => o.value === rv)) form.repeat.add(new Option(`Tous les ${it.repeat.interval} (${it.repeat.freq})`, rv));
+  form.repeat.value = rv; form.until.value = it.repeat?.until || "";
+  form.classList.toggle("norepeat", !rv);
+  $("#edSkip").hidden = !(item && item.repeat?.freq && occ);
+  $("#edConvert").hidden = !(item && (item.type === "event" || item.type === "task"));
+  $("#edConvert").textContent = item && item.type === "event" ? "→ Convertir en tâche" : "→ Mettre à l'agenda";
+  edPerson = it.person || state.me; paintPersons();
+  form.dataset.type = it.type; fillCats(it.type, it.category); setType(it.type); form.category.value = it.category || form.category.value;
+  ed.showModal();
+  if (!item) setTimeout(() => form.title.focus(), 50);
+}
+function readForm() {
+  const t = form.dataset.type;
+  const o = { type: t, title: form.title.value.trim(), category: form.category.value, notes: form.notes.value.trim(), person: t === "shop" ? "both" : edPerson };
+  if (t === "shop") Object.assign(o, { qty: form.qty.value.trim() });
+  else Object.assign(o, { date: form.date.value, time: form.time.value });
+  o.repeat = null; o.endDate = "";
+  if (t === "event") {
+    o.endTime = form.endTime.value;
+    o.endDate = form.endDate.value && form.endDate.value > o.date ? form.endDate.value : "";
+    if (form.repeat.value && o.date) { const [freq, n] = form.repeat.value.split(":"); o.repeat = { freq, interval: +n || 1, until: form.until.value || "" }; }
+  }
+  if (t === "task") Object.assign(o, { priority: +form.priority.value, status: form.status.value });
+  if (t !== "task") o.status = editing ? (state.items.find(i => i.id === editing)?.status || "todo") : "todo";
+  return o;
+}
+$("#edType").onclick = e => { const b = e.target.closest("button"); if (b) setType(b.dataset.type); };
+$("#edPerson").onclick = e => { const b = e.target.closest("button"); if (b) { edPerson = b.dataset.id; paintPersons(); } };
+$("#edClose").onclick = () => ed.close();
+form.repeat.onchange = () => form.classList.toggle("norepeat", !form.repeat.value);
+$("#edConvert").onclick = () => {
+  const it = state.items.find(i => i.id === editing); if (!it) return;
+  if (it.type === "event") {
+    store.update(editing, { type: "task", repeat: null, endDate: "", endTime: "", status: it.status === "done" ? "done" : "todo", priority: it.priority || 0 }).catch(fail);
+    toast("Converti en tâche ✓ (onglet Tâches)");
+  } else {
+    store.update(editing, { type: "event", date: it.date || todayStr(), status: it.status === "done" ? "done" : "todo", doneAt: it.status === "done" ? Date.now() : null }).catch(fail);
+    toast("Mis à l'agenda ✓" + (it.date ? "" : " (aujourd'hui — change la date si besoin)"));
+  }
+  ed.close();
+};
+$("#edSkip").onclick = () => {
+  const it = state.items.find(i => i.id === editing); if (!it || !editingOcc) return;
+  store.update(editing, { exdates: [...(it.exdates || []), editingOcc] }).catch(fail); ed.close(); toast("Retiré pour ce jour uniquement");
+};
+ed.addEventListener("click", e => { if (e.target === ed) ed.close(); });
+form.onsubmit = e => {
+  e.preventDefault();
+  const o = readForm(); if (!o.title) return;
+  if (o.type === "shop") ls.set("na.shopcat", o.category);
+  (editing ? store.update(editing, o) : store.add(o)).catch(fail);
+  ed.close();
+};
+$("#edDel").onclick = () => { if (editing && confirm("Supprimer cet élément ?")) { store.remove(editing).catch(fail); ed.close(); } };
+$("#edDup").onclick = () => { const o = readForm(); store.add({ ...o, title: o.title + " (copie)" }).catch(fail); ed.close(); toast("Dupliqué"); };
+
+/* ---------- interactions ---------- */
+$("#hdrSettings").onclick = () => { state.view = state.view === "settings" ? ls.get("na.prevView", "agenda") : "settings"; ls.set("na.view", state.view); scrollTo(0, 0); render(); };
+$("#tabs").onclick = e => { const b = e.target.closest("button"); if (!b) return;
+  if (b.id === "tabPlus") { $("#fab").onclick(); return; } ls.set("na.prevView", b.dataset.view); state.view = b.dataset.view; ls.set("na.view", state.view); scrollTo(0, 0); render(); };
+$("#fab").onclick = () => {
+  if (state.view === "agenda") openEditor(null, { type: "event", date: state.agenda.mode === "month" ? (state.agenda.open || todayStr()) : todayStr() });
+  else if (state.view === "finance") openInvoice(null);
+  else if (state.view === "shop") openEditor(null, { type: "shop", category: ls.get("na.shopcat", "Autre") });
+  else openEditor(null, { type: "task" });
+};
+function quickAdd(kind) {
+  if (kind === "task") {
+    const inp = $("#quickTask"), t = inp.value.trim(); if (!t) return;
+    store.add({ type: "task", title: t, person: state.me, category: state.filters.category || "", date: "", time: "", priority: 0, status: "todo", notes: "" }).catch(fail);
+    inp.value = "";
+  } else {
+    const inp = $("#quickShop"), t = inp.value.trim(); if (!t) return;
+    const cat = $("#quickShopCat").value; ls.set("na.shopcat", cat);
+    store.add({ type: "shop", title: t, person: "both", category: cat, qty: "", status: "todo", notes: "" }).catch(fail);
+    inp.value = "";
+  }
+  setTimeout(() => $(kind === "task" ? "#quickTask" : "#quickShop")?.focus(), 30);
+}
+const main = $("#main");
+main.addEventListener("click", e => {
+  const el = e.target.closest("[data-act]"); if (!el) return;
+  const act = el.dataset.act, id = el.dataset.id, f = state.filters, ag = state.agenda;
+  switch (act) {
+    case "edit": openEditor(state.items.find(i => i.id === id), {}, el.dataset.d || null); break;
+    case "toggle": {
+      const it = state.items.find(i => i.id === id); if (!it) break;
+      if (it.type === "event" && it.repeat?.freq) {
+        const d = el.dataset.d; if (!d) { toast("Ouvre-le depuis l'agenda pour cocher ce jour-là"); break; }
+        const dd = it.doneDates || [];
+        store.update(id, { doneDates: dd.includes(d) ? dd.filter(x => x !== d) : [...dd, d] }).catch(fail);
+      } else {
+        const done = it.status === "done";
+        store.update(id, { status: done ? "todo" : "done", doneAt: done ? null : Date.now() }).catch(fail);
+        if (!done && it.type === "event") toast("Coché ✓ — reste grisé 30 jours, puis s'efface");
+      }
+      break;
+    }
+    case "fperson": f.persons = f.persons.includes(id) ? f.persons.filter(x => x !== id) : [...f.persons, id]; saveFilters(); render(); break;
+    case "fstatus": f.status = el.dataset.v; saveFilters(); render(); break;
+    case "quickTask": quickAdd("task"); break;
+    case "quickShop": quickAdd("shop"); break;
+    case "clearShop": store.removeMany(state.items.filter(i => i.type === "shop" && i.status === "done").map(i => i.id)).catch(fail); break;
+    case "fintab": state.finTab = el.dataset.v; ls.set("na.fintab", state.finTab); render(); break;
+    case "quickInv": quickInvoice(); break;
+    case "editinv": openInvoice(state.fin.find(x => x.id === id)); break;
+    case "editbill": { const b = state.fin.find(x => x.id === id); if (b) openBill(b); break; }
+    case "newbill": openBill(null); break;
+    case "billpaid": { const b = state.fin.find(x => x.id === id); if (b) openInvoice(null, { supplier: b.supplier || b.label, amount: b.amount, category: b.category, billId: b.id }); break; }
+    case "sugok": { const g = suggestions().find(x => x.key === el.dataset.k); if (g) openBill(null, { label: g.supplier, supplier: g.supplier, amount: g.amount, months: g.months, next: g.next, category: g.category }); break; }
+    case "sugno": { const d = ls.get("na.sugDismiss", []); d.push(el.dataset.k); ls.set("na.sugDismiss", d); render(); break; }
+    case "agfilters": ag.showFilters = !ag.showFilters; render(); break;
+    case "agmode": ag.mode = el.dataset.v; ls.set("na.agmode", ag.mode); render(); break;
+    case "agprev": case "agnext": {
+      const dir = act === "agnext" ? 1 : -1;
+      ag.anchor = ag.mode === "week" ? addDays(ag.anchor, 7 * dir) : new Date(ag.anchor.getFullYear(), ag.anchor.getMonth() + dir, 1);
+      render(); break;
+    }
+    case "agtoday": ag.anchor = new Date(); ag.sel = todayStr(); ag.open = ag.mode === "month" ? todayStr() : null; render(); break;
+    case "agsel": ag.sel = el.dataset.d; ag.open = ag.open === el.dataset.d ? null : el.dataset.d; render(); break;
+    case "addOn": openEditor(null, { type: "event", date: el.dataset.d }); break;
+    case "logout": if (devUnsub) { devUnsub(); devUnsub = null; } fbRef.a.signOut(fbRef.auth); break;
+    case "notifOn": enableNotifs(); break;
+    case "notifOff": if (confirm("Désactiver les notifications sur cet appareil ?")) disableNotifs(); break;
+    case "notifTest": sendTest(); break;
+    case "npl": togglePrefList(el.dataset.k, el.dataset.k === "leads" ? +el.dataset.v : el.dataset.v); break;
+    case "delcat": { const s = clone(state.settings); s[el.dataset.k].splice(+el.dataset.n, 1); saveSettings(s); break; }
+    case "addcat": { const inp = $("#new-" + el.dataset.k), v = inp.value.trim(); if (!v) return; const s = clone(state.settings); if (!s[el.dataset.k].includes(v)) s[el.dataset.k].push(v); saveSettings(s); break; }
+    case "export": {
+      const blob = new Blob([JSON.stringify({ exportedAt: new Date().toISOString(), version: APP_VERSION, settings: state.settings, items: state.items, finance: state.fin }, null, 2)], { type: "application/json" });
+      const a = document.createElement("a"); a.href = URL.createObjectURL(blob); a.download = `agenda-sauvegarde-${todayStr()}.json`; a.click(); break;
+    }
+    case "import": $("#importFile").click(); break;
+    case "purgeDone": {
+      const ids = state.items.filter(i => i.type === "task" && i.status === "done").map(i => i.id);
+      if (ids.length && confirm(`Supprimer ${ids.length} tâche(s) faite(s) ?`)) store.removeMany(ids).catch(fail); break;
+    }
+  }
+});
+function saveSettings(s) { state.settings = s; store.saveSettings(s).catch(fail); render(); }
+let swipeX = null, swipeY = null;
+main.addEventListener("touchstart", e => { if (e.target.closest("#monthGrid")) { swipeX = e.touches[0].clientX; swipeY = e.touches[0].clientY; } else swipeX = null; }, { passive: true });
+main.addEventListener("touchend", e => {
+  if (swipeX == null) return;
+  const dx = e.changedTouches[0].clientX - swipeX, dy = e.changedTouches[0].clientY - swipeY; swipeX = null;
+  if (Math.abs(dx) > 60 && Math.abs(dx) > Math.abs(dy) * 1.5) {
+    const ag = state.agenda; ag.anchor = new Date(ag.anchor.getFullYear(), ag.anchor.getMonth() + (dx < 0 ? 1 : -1), 1); ag.open = null; render();
+  }
+}, { passive: true });
+main.addEventListener("input", e => {
+  if (e.target.dataset.f === "q") { state.filters.q = e.target.value; render(); }
+});
+main.addEventListener("change", e => {
+  const t = e.target, f = state.filters;
+  if (t.dataset.f === "category") { f.category = t.value; saveFilters(); render(); }
+  else if (t.dataset.f === "finYear") { state.finYear = t.value; render(); }
+  else if (t.dataset.f === "finCat") { state.finCat = t.value; render(); }
+  else if (t.dataset.f === "sort") { f.sort = t.value; saveFilters(); render(); }
+  else if (t.dataset.act === "agtasks") { state.agenda.withTasks = t.checked; ls.set("na.agtasks", t.checked); render(); }
+  else if (t.dataset.act === "me") { state.me = t.value; ls.set("na.me", t.value); if (state.dev && fbRef) fbRef.f.setDoc(devRef(), { me: t.value, name: P(t.value).name }, { merge: true }).catch(fail); }
+  else if (t.dataset.act === "np") setPref(t.dataset.k, t.checked);
+  else if (t.dataset.act === "npsel") setPref(t.dataset.k, t.value);
+  else if (t.dataset.act === "pname" || t.dataset.act === "pcolor") {
+    const s = clone(state.settings), p = s.people[+t.dataset.n];
+    if (t.dataset.act === "pname") p.name = t.value.trim() || p.name; else p.color = t.value;
+    saveSettings(s);
+  }
+  else if (t.id === "importFile" && t.files[0]) {
+    t.files[0].text().then(txt => {
+      const data = JSON.parse(txt); const all = Array.isArray(data) ? data : data.items || [];
+      const known = new Set(state.items.map(i => i.src).filter(Boolean));
+      const items = all.filter(i => !i.src || !known.has(i.src)), skipped = all.length - items.length;
+      if (!items.length) { toast("Tout est déjà importé."); return; }
+      if (!confirm(`Importer ${items.length} élément(s) ?${skipped ? ` (${skipped} déjà présents ignorés)` : ""}`)) return;
+      const s = clone(state.settings); let ch = false;
+      items.forEach(i => { if (i.category && i.type !== "shop" && !s.categories.includes(i.category)) { s.categories.push(i.category); ch = true; } });
+      if (ch) saveSettings(s);
+      store.importItems(items).then(() => toast(`Import terminé : ${items.length} élément(s)`)).catch(fail);
+    }).catch(() => toast("Fichier invalide")).finally(() => { t.value = ""; });
+  }
+});
+main.addEventListener("keydown", e => {
+  if (e.key !== "Enter") return;
+  if (e.target.id === "quickTask") { e.preventDefault(); quickAdd("task"); }
+  else if (e.target.id === "quickInv") { e.preventDefault(); quickInvoice(); }
+  else if (e.target.id === "quickShop") { e.preventDefault(); quickAdd("shop"); }
+  else if (e.target.id?.startsWith("new-")) { e.preventDefault(); e.target.nextElementSibling.click(); }
+});
+
+boot();
+</script>
+</body>
+</html>
