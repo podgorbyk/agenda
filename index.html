@@ -217,7 +217,7 @@ dialog{overflow-x:hidden;max-width:min(560px,100vw)}
 .err{color:var(--danger);font-size:14px;min-height:1em}
 .toast[popover],.busy[popover]{margin:0;border:0;overflow:visible}
 .busy[popover]{inset:0;width:auto;height:auto;padding:0}
-.toast[popover]{inset:auto;right:auto;top:auto}
+.toast[popover]{inset:auto;top:auto;right:auto;left:50%;bottom:calc(150px + env(safe-area-inset-bottom));width:max-content;height:auto;padding:10px 16px;background:var(--ink);color:var(--bg)}
 .toast{position:fixed;left:50%;transform:translateX(-50%);bottom:calc(150px + env(safe-area-inset-bottom));background:var(--ink);color:var(--bg);padding:10px 16px;border-radius:12px;font-size:14px;z-index:100;max-width:90vw}
 
 /* =============== THÈME 2.1 — rose poudré / prune, Helvetica =============== */
@@ -436,7 +436,7 @@ const DEFAULT_SETTINGS = {
 };
 
 /* ---------- espaces : chaque foyer a son agenda privé, seule la catégorie partagée est commune ---------- */
-const APP_VERSION = "3.0.1 — 12 nov. 2026";
+const APP_VERSION = "3.0.2 — 12 nov. 2026";
 const SHARED_CAT = "Sombreffe";
 const FIN_CAT = "Finance", FIN_COLOR = "#16a34a";
 const FIN_CATS = ["Courses", "Énergie", "Eau", "Assurance", "Télécom & internet", "Impôts & taxes", "Voiture", "École & enfants", "Santé", "Maison", "Banque & crédit", "Abonnements", "Autre"];
