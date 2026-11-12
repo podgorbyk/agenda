@@ -151,6 +151,19 @@ textarea{min-height:70px;resize:vertical}
 #finForm.nodue .f-due{display:none}
 #finForm.nocustom .f-custom{display:none}
 #finHint{background:color-mix(in srgb,#16a34a 10%,var(--card));border:1px solid color-mix(in srgb,#16a34a 35%,transparent);border-radius:12px;padding:8px 10px;color:var(--ink);line-height:1.45}
+.ticket .row{padding:8px 10px;gap:8px;align-items:center}
+#tkForm,#finForm,#edForm{grid-template-columns:minmax(0,1fr)}
+.ticket input.nm{border:0;background:transparent;padding:2px 0;min-height:0;font-size:15px;flex:1 1 0;width:0;min-width:0}
+.ticket input.pr{border:1px solid var(--line);border-radius:10px;background:var(--card);width:76px;text-align:right;min-height:34px;padding:4px 8px;font-variant-numeric:tabular-nums}
+.ticket .rm{border:0;background:var(--soft);border-radius:50%;width:26px;height:26px;color:var(--mute);flex:none;padding:0}
+.ticket .q{font-size:12px;color:var(--mute);white-space:nowrap}
+.est{font-size:12.5px;color:var(--mute);white-space:nowrap;font-variant-numeric:tabular-nums}
+.busy{position:fixed;inset:0;z-index:200;background:rgba(40,20,25,.45);display:grid;place-items:center}
+.busy div{background:var(--card);border-radius:18px;padding:18px 22px;box-shadow:var(--shadow);font-weight:600;display:flex;gap:12px;align-items:center}
+.busy i{width:20px;height:20px;border-radius:50%;border:3px solid var(--soft);border-top-color:var(--accent);animation:spin 1s linear infinite}
+@keyframes spin{to{transform:rotate(360deg)}}
+#updBar{position:fixed;left:12px;right:12px;top:calc(8px + env(safe-area-inset-top));z-index:150;background:var(--accent);color:#fff;border-radius:14px;padding:10px 14px;display:flex;gap:10px;align-items:center;box-shadow:var(--shadow);font-size:14px}
+#updBar button{margin-left:auto;border:0;background:#fff;color:var(--accent);border-radius:10px;padding:6px 12px;font-weight:700}
 #finHint.warn{background:color-mix(in srgb,var(--warn) 12%,var(--card));border-color:color-mix(in srgb,var(--warn) 40%,transparent)}
 .cell.out{opacity:.4}
 .cell.today .n{background:var(--accent);color:var(--accent-ink);border-radius:50%;width:24px;height:24px;display:grid;place-items:center}
@@ -346,11 +359,26 @@ nav.tabs button.plus span{width:62px;height:62px;border-radius:50%;display:grid;
   </form>
 </dialog>
 
+<input type="file" id="imgInput" accept="image/*" hidden>
+<dialog id="tkEd">
+  <form id="tkForm" autocomplete="off" style="padding:14px 16px calc(16px + env(safe-area-inset-bottom));display:grid;gap:12px">
+    <div class="sheet-head"><h2 id="tkTitle">Ticket de caisse</h2><button type="button" class="x" id="tkClose" aria-label="Fermer">×</button></div>
+    <div id="tkHint" class="small" hidden></div>
+    <div class="grid2">
+      <label>Magasin<input type="text" name="store"></label>
+      <label>Date<input type="date" name="date"></label>
+      <label>Total payé (€)<input type="text" name="total" inputmode="decimal"></label>
+      <label>Remises (€)<input type="text" name="discounts" inputmode="decimal"></label>
+    </div>
+    <div id="tkItems" class="ticket"></div>
+    <div class="actions"><button type="button" class="btn danger" id="tkDel">Supprimer</button><button type="submit" class="btn primary">Enregistrer</button></div>
+  </form>
+</dialog>
 <dialog id="finEd">
   <form id="finForm" data-kind="invoice" autocomplete="off">
     <div class="sheet-head"><h2 id="finTitle">Facture</h2><button type="button" class="x" id="finClose" aria-label="Fermer">×</button></div>
     <div id="finHint" class="small" hidden></div>
-    <button type="button" class="btn f-inv" id="finPdf">📄 Remplir depuis un PDF</button>
+    <div class="frow f-inv"><button type="button" class="btn" id="finPhoto">📷 Photo</button><button type="button" class="btn" id="finPdf">📄 PDF</button></div>
     <input type="file" id="pdfInput" accept="application/pdf,.pdf" hidden>
     <input type="text" name="label" class="f-bill" placeholder="Libellé (ex. Assurance auto)">
     <input type="text" name="supplier" placeholder="Fournisseur (ex. Engie)">
@@ -405,10 +433,10 @@ const DEFAULT_SETTINGS = {
 };
 
 /* ---------- espaces : chaque foyer a son agenda privé, seule la catégorie partagée est commune ---------- */
-const APP_VERSION = "2.2 — 11 nov. 2026";
+const APP_VERSION = "3.0 — 11 nov. 2026";
 const SHARED_CAT = "Sombreffe";
 const FIN_CAT = "Finance", FIN_COLOR = "#16a34a";
-const FIN_CATS = ["Énergie", "Eau", "Assurance", "Télécom & internet", "Impôts & taxes", "Voiture", "École & enfants", "Santé", "Maison", "Banque & crédit", "Abonnements", "Autre"];
+const FIN_CATS = ["Courses", "Énergie", "Eau", "Assurance", "Télécom & internet", "Impôts & taxes", "Voiture", "École & enfants", "Santé", "Maison", "Banque & crédit", "Abonnements", "Autre"];
 const LOGIN_DOMAIN = "example.com";            // « claviem » se connecte comme claviem@example.com
 const SPACE_OF = {
   "byk_kevin@hotmail.com": "famille",
@@ -641,6 +669,7 @@ function startApp() {
   }, onErr));
   $("#tabFinance").hidden = !financeOn();
   $("#tabSettings").hidden = financeOn();
+  if (!DEMO && store.space === "famille") unsub.push(fbRef.f.onSnapshot(fbRef.f.doc(fbRef.db, "meta", "aiUsage"), d => { state.aiUsage = d.exists() ? d.data() : null; }, () => {}));
   if (financeOn() && store.onFinance) unsub.push(store.onFinance(list => { state.fin = list; if (state.view !== "settings") render(); }, e => console.warn("finance", e)));
   render(); paintSync();
   if (store.mode === "cloud") { watchDevice(); refreshToken(); }
@@ -831,6 +860,7 @@ function rowHTML(i, opts = {}) {
   else if (i.type !== "shop") meta.push(`<span class="who" style="--c:${esc(p.color)}">${esc(p.name)}</span>`);
   if (i.category && !opts.noCat) meta.push(`<span class="tag${i.category === SHARED_CAT ? " shared" : ""}">${i.category === SHARED_CAT ? "🏡 " : ""}${esc(i.category)}</span>`);
   if (i.qty) meta.push(`<span>${esc(i.qty)}</span>`);
+  if (i.type === "shop" && i.status !== "done" && state._est && state._est[i.id] != null) meta.push(`<span class="est">~${esc(eur(state._est[i.id]))}</span>`);
   if (i.date && !opts.time) meta.push(`<span class="${late ? "late-t" : ""}">${i.date === today ? "Aujourd'hui" : esc(fmtDay(i.date))}${i.time ? " · " + esc(i.time) : ""}</span>`);
   if (i.type === "event" && i.repeat?.freq) meta.push(`<span class="rep" title="Répétition">↻ ${esc(REPEAT_LABEL[i.repeat.freq + ":" + (i.repeat.interval || 1)] || "Répété")}</span>`);
   if (i.type === "event" && i.endDate && i.endDate > i.date) meta.push(`<span>→ ${esc(fmtDay(i.endDate))}</span>`);
@@ -1020,13 +1050,23 @@ function renderAgenda() {
 
 /* --- Courses --- */
 function renderShop() {
+  const tab = aiOn() ? (state.shopTab || "list") : "list";
+  const seg = aiOn() ? `<div class="frow2" style="margin:4px 0 12px"><div class="seg" style="flex:1"><button class="${tab === "list" ? "on" : ""}" data-act="shoptab" data-v="list">Liste</button><button class="${tab === "stats" ? "on" : ""}" data-act="shoptab" data-v="stats">Analyse</button></div>
+    <button class="btn primary" data-act="scanrec" style="flex:none">📷 Ticket</button></div>` : "";
+  if (tab === "stats") return seg + renderShopAnalysis();
+  const book = aiOn() ? priceBook() : new Map();
   const items = state.items.filter(i => i.type === "shop");
   const cats = state.settings.shopCategories;
   const open = items.filter(i => i.status !== "done"), done = items.filter(i => i.status === "done");
   const groups = [...cats, ...new Set(open.map(i => i.category).filter(c => !cats.includes(c)))]
     .map(c => [c, open.filter(i => (i.category || "Autre") === c)]).filter(g => g[1].length);
   const lastCat = ls.get("na.shopcat", "Autre");
-  return `
+  let estSum = 0, known = 0; const est = {};
+  open.forEach(i => { const e = estimateFor(i.title, i.qty, book); if (e) { est[i.id] = e.price; estSum += e.price; known++; } });
+  const basket = book.size && open.length ? `<div class="recap" style="display:flex;align-items:center;gap:12px"><span style="font-size:24px">🧺</span><div style="flex:1"><div style="font-weight:700;font-size:18px">Panier estimé ~ ${esc(eur(Math.round(estSum * 100) / 100))}</div>
+      <div class="small">${known}/${open.length} articles avec un prix connu (tes derniers tickets)${known < open.length ? " · les autres ne sont pas comptés" : ""}</div></div></div>` : "";
+  state._est = est;
+  return `${seg}${basket}
     <div class="quick"><input type="text" id="quickShop" placeholder="Ajouter un article…" enterkeyhint="done">
       <button class="btn primary" data-act="quickShop">+</button></div>
     <div class="frow" style="margin-bottom:6px"><select id="quickShopCat">${cats.map(c => `<option ${c === lastCat ? "selected" : ""}>${esc(c)}</option>`).join("")}</select></div>
@@ -1052,6 +1092,9 @@ function renderSettings() {
     <div class="small">Sert à pré-remplir « Pour qui » quand tu ajoutes quelque chose.</div>
   </div></div>
   ${notifSection()}
+  ${aiOn() ? (() => { const m = (state.aiUsage?.months || {})[todayStr().slice(0, 7)] || {}; const usd = ((m.in || 0) * 0.10 + (m.out || 0) * 0.50) / 1e6;
+    return `<div class="sect"><h2>Lecture IA</h2><div class="card"><div>Ce mois-ci : <b>${m.count || 0}</b> analyse(s) · coût ≈ <b>${usd < 0.01 && m.count ? "< 0,01" : usd.toFixed(2).replace(".", ",")} $</b></div>
+      <div class="small">Tickets de caisse et factures en photo. Limite de sécurité : 150 analyses / mois. Réservé à Kevin & Emeline.</div></div></div>`; })() : ""}
   <div class="sect"><h2>Personnes</h2><div class="card">
     ${s.people.map((p, n) => `<div class="prow"><input type="color" value="${esc(p.color)}" data-act="pcolor" data-n="${n}"><input type="text" value="${esc(p.name)}" data-act="pname" data-n="${n}"></div>`).join("")}
   </div></div>
@@ -1096,7 +1139,7 @@ function billsOn(ds) {
 }
 function guessFinCat(sup) {
   const t = normSup(sup);
-  const map = [[/engie|luminus|totalenergies|mega|eneco|electr|gaz|mazout|pellet/, "Énergie"], [/swde|vivaqua|eau|inbw|cile/, "Eau"],
+  const map = [[/delhaize|colruyt|aldi|lidl|carrefour|spar|intermarche|okay|cora|match|albert heijn|jumbo|proxy|bio-planet|boucherie|boulangerie/, "Courses"], [/engie|luminus|totalenergies|mega|eneco|electr|gaz|mazout|pellet/, "Énergie"], [/swde|vivaqua|eau|inbw|cile/, "Eau"],
     [/ethias|axa|ag insurance|\bag\b|ap assurance|baloise|allianz|dkv|assur|mutuelle|mutualite|solidaris|partenamut/, "Assurance"],
     [/proximus|orange|telenet|voo|base|scarlet|internet|gsm/, "Télécom & internet"], [/spf|precompte|impot|taxe|commune|region|tva/, "Impôts & taxes"],
     [/garage|controle|pneu|carburant|essence|diesel|bmw|ford|auto|voiture|mazda/, "Voiture"], [/ecole|academie|stage|creche|cantine|danse|gym/, "École & enfants"],
@@ -1106,6 +1149,7 @@ function guessFinCat(sup) {
   return "Autre";
 }
 function unusual(inv) {
+  if (inv.category === "Courses" || inv.receiptId) return 0;
   const prev = invoices().filter(x => x.id !== inv.id && normSup(x.supplier) === normSup(inv.supplier) && x.date < inv.date);
   if (prev.length < 2) return 0;
   const avg = prev.reduce((a, x) => a + (+x.amount || 0), 0) / prev.length;
@@ -1115,7 +1159,7 @@ function suggestions() {
   const dismissed = ls.get("na.sugDismiss", []), today = todayStr();
   const linked = new Set(bills().map(b => normSup(b.supplier || b.label)));
   const groups = {};
-  invoices().forEach(i => { const k = normSup(i.supplier); if (!k || i.billId) return; (groups[k] = groups[k] || []).push(i); });
+  invoices().forEach(i => { const k = normSup(i.supplier); if (!k || i.billId || i.category === "Courses" || i.receiptId) return; (groups[k] = groups[k] || []).push(i); });
   const out = [];
   for (const [k, arr] of Object.entries(groups)) {
     if (arr.length < 2 || linked.has(k) || dismissed.includes(k)) continue;
@@ -1139,6 +1183,8 @@ function forecast() {
     const from = ymd(a), to = ymd(b), lines = [];
     bills().forEach(x => billOccurrences(x, n === 0 ? ymd(new Date(now.getFullYear(), now.getMonth(), 1)) : from, to).forEach(() => lines.push({ label: x.label || x.supplier, amount: +x.amount || 0 })));
     invoices().filter(i => !i.paid && i.due && i.due >= from && i.due <= to).forEach(i => lines.push({ label: i.supplier, amount: +i.amount || 0 }));
+    const g = groceryAvg();
+    if (g.avg > 0) { const left = n === 0 ? Math.max(0, g.avg - g.thisMonth) : g.avg; if (left > 0) lines.push({ label: "Courses (moyenne)", amount: Math.round(left) }); }
     months.push({ label: a.toLocaleDateString("fr-BE", { month: "short" }) + (a.getMonth() === 0 || n === 0 ? " " + String(a.getFullYear()).slice(2) : ""), total: lines.reduce((s, l) => s + l.amount, 0), lines });
   }
   const avg = months.reduce((s, m) => s + m.total, 0) / 12;
@@ -1170,7 +1216,7 @@ function renderFinance() {
       <div class="amt">${esc(eur(i.amount))}</div></div></div>`; };
     return `${head}
       <div class="quick"><input type="text" id="quickInv" placeholder="Ex. : Engie 412,50" enterkeyhint="done"><button class="btn primary" data-act="quickInv">OK</button></div>
-      <button class="btn" data-act="pdfpick" style="width:100%;margin:-4px 0 12px">📄 Lire une facture PDF</button>
+      <div class="frow" style="margin:-4px 0 12px"><button class="btn" data-act="photopick">📷 Photo de facture</button><button class="btn" data-act="pdfpick">📄 Facture PDF</button></div>
       <div class="frow" style="margin-bottom:10px"><select data-f="finYear">${years.map(y => `<option ${y === year ? "selected" : ""}>${y}</option>`).join("")}</select>
         <select data-f="finCat"><option value="">Toutes catégories</option>${FIN_CATS.map(c => `<option ${c === cat ? "selected" : ""}>${esc(c)}</option>`).join("")}</select></div>
       <div class="kpis"><div class="kpi"><div class="v">${esc(eur(total))}</div><div class="l">Total ${esc(year)}${cat ? " · " + esc(cat) : ""}</div></div>
@@ -1299,7 +1345,10 @@ function parseInvoiceText(lines, ctx = {}) {
 async function readInvoicePdf(file) {
   let lines;
   try { lines = await pdfLines(file); } catch (e) { toast("Impossible de lire ce PDF : " + (e.message || e), 5000); return; }
-  if (!lines.length || lines.join("").length < 30) { toast("Ce PDF est une image (scan) : il n'y a pas de texte à lire. Encode-le à la main.", 6000); return; }
+  if (!lines.length || lines.join("").length < 30) {
+    if (aiOn()) { try { const b64 = await pdfPageToJpeg(file); return aiInvoiceFromImage(b64, `Lu par l'IA depuis ${file.name}`); } catch (e) { return aiErr(e); } }
+    toast("Ce PDF est une image (scan) : il n'y a pas de texte à lire. Encode-le à la main.", 6000); return;
+  }
   const sup = [...new Set(state.fin.map(f => f.supplier).filter(Boolean))];
   const r = parseInvoiceText(lines, { suppliers: sup });
   const today = todayStr();
@@ -1319,6 +1368,253 @@ async function readInvoicePdf(file) {
 }
 $("#pdfInput").addEventListener("change", e => { const f = e.target.files[0]; e.target.value = ""; if (f) { if (finEd.open) finEd.close(); readInvoicePdf(f); } });
 $("#finPdf").onclick = () => $("#pdfInput").click();
+let imgPurpose = "invoice";
+$("#finPhoto").onclick = () => { imgPurpose = "invoice"; $("#imgInput").click(); };
+$("#imgInput").addEventListener("change", async e => {
+  const f = e.target.files[0]; e.target.value = ""; if (!f) return;
+  if (!aiOn()) return toast("La lecture par l'IA est réservée au foyer Kevin & Emeline.");
+  if (imgPurpose === "receipt") return scanReceipt(f);
+  let b64; try { b64 = await imageToJpegs(f); } catch (err) { return toast("Photo illisible : " + err.message, 5000); }
+  aiInvoiceFromImage(b64, "Lu depuis une photo");
+});
+
+/* ---------- IA (tickets & factures en photo) — foyer Kevin & Emeline ---------- */
+const aiOn = () => DEMO || (store && store.space === "famille");
+let fnCall = null;
+async function aiCall(kind, images, mediaType = "image/jpeg") {
+  images = Array.isArray(images) ? images : [images];
+  if (DEMO) { window.__aiImages = images; await new Promise(r => setTimeout(r, 700)); return demoAi(kind); }
+  if (!fnCall) {
+    const fm = await import(`https://www.gstatic.com/firebasejs/${FB_VERSION}/firebase-functions.js`);
+    fnCall = fm.httpsCallable(fm.getFunctions(fbRef.app, "europe-west1"), "analyser", { timeout: 120000 });
+  }
+  const r = await fnCall({ kind, images, mediaType, categories: state.settings.shopCategories });
+  return r.data.data;
+}
+function demoAi(kind) {
+  if (kind === "invoice") return { supplier: "Ethias", amount: 642.18, date: todayStr(), due: ymd(addDays(new Date(), 20)), number: "ET-2026-55102", communication: "+++090/1234/56789+++", iban: "BE72 0910 0078 4416", domiciliation: false, category: "Assurance", recurring: "yearly", summary: "Prime annuelle assurance auto", confidence: "haute" };
+  return { store: "Colruyt", city: "Gembloux", date: todayStr(), total: 47.83, discounts: 2.1, confidence: "haute", items: [
+    { name: "Lait demi-écrémé 1 L", qty: 6, unit: "pc", unitPrice: 1.05, price: 6.3, discount: 0, category: "Frais" },
+    { name: "Pommes Jonagold", qty: 1.24, unit: "kg", unitPrice: 2.49, price: 3.09, discount: 0, category: "Fruits & légumes" },
+    { name: "Pâtes penne 500 g", qty: 2, unit: "pc", unitPrice: 1.19, price: 2.38, discount: 0, category: "Épicerie" },
+    { name: "Filet de poulet", qty: 0.82, unit: "kg", unitPrice: 12.9, price: 10.58, discount: 0, category: "Boucherie" },
+    { name: "Café moulu 500 g", qty: 1, unit: "pc", unitPrice: 6.99, price: 4.89, discount: 2.1, category: "Épicerie" },
+    { name: "Liquide vaisselle", qty: 1, unit: "pc", unitPrice: 2.45, price: 2.45, discount: 0, category: "Maison & hygiène" },
+    { name: "Eau pétillante 6 x 1,5 L", qty: 1, unit: "pc", unitPrice: 3.6, price: 3.6, discount: 0, category: "Boissons" },
+    { name: "Pizza surgelée", qty: 3, unit: "pc", unitPrice: 2.99, price: 8.97, discount: 0, category: "Surgelés" },
+    { name: "Pain gris tranché", qty: 1, unit: "pc", unitPrice: 2.35, price: 2.35, discount: 0, category: "Épicerie" },
+    { name: "Yaourts nature x8", qty: 1, unit: "pc", unitPrice: 3.22, price: 3.22, discount: 0, category: "Frais" }] };
+}
+function busy(on, txt = "Lecture par l'IA…") {
+  let el = $("#busy");
+  if (on) { if (!el) { el = document.createElement("div"); el.id = "busy"; el.className = "busy"; document.body.appendChild(el); } el.innerHTML = `<div><i></i>${esc(txt)}</div>`; }
+  else if (el) el.remove();
+}
+/* Photo → morceaux JPEG lisibles par l'IA. Un long ticket est découpé en tranches (avec chevauchement)
+   pour garder le texte net : sinon il serait réduit à ~400 px de large et deviendrait illisible. */
+async function imageToJpegs(file) {
+  const bmp = await loadBitmap(file), w = bmp.width, h = bmp.height;
+  if (h / w <= 2.2) return [drawPart(bmp, 0, 0, w, h, Math.min(1, 1600 / Math.max(w, h)))];
+  const k = Math.min(1, 1000 / w), W = w * k, H = h * k, overlap = 140;
+  let T = Math.round(W * 1.5), n = Math.ceil((H - overlap) / (T - overlap));
+  if (n > 5) { n = 5; T = Math.ceil((H + overlap * (n - 1)) / n); }
+  const parts = [];
+  for (let i = 0; i < n; i++) { const y0 = Math.max(0, Math.min(H - T, i * (T - overlap))); parts.push(drawPart(bmp, 0, y0 / k, w, Math.min(T, H) / k, k)); }
+  return parts;
+}
+function drawPart(bmp, sx, sy, sw, sh, k) {
+  const c = document.createElement("canvas"); c.width = Math.round(sw * k); c.height = Math.round(sh * k);
+  c.getContext("2d").drawImage(bmp, sx, sy, sw, sh, 0, 0, c.width, c.height);
+  return c.toDataURL("image/jpeg", 0.85).split(",")[1];
+}
+async function loadBitmap(file) {
+  try { return await createImageBitmap(file, { imageOrientation: "from-image" }); }
+  catch { return await new Promise((res, rej) => { const im = new Image(); im.onload = () => res(im); im.onerror = () => rej(new Error("image illisible (format HEIC ?)")); im.src = URL.createObjectURL(file); }); }
+}
+async function imageToJpeg(file, max = 1600) {
+  let bmp;
+  try { bmp = await createImageBitmap(file, { imageOrientation: "from-image" }); }
+  catch { bmp = await new Promise((res, rej) => { const im = new Image(); im.onload = () => res(im); im.onerror = () => rej(new Error("image illisible (format HEIC ?)")); im.src = URL.createObjectURL(file); }); }
+  const w = bmp.width, h = bmp.height, k = Math.min(1, max / Math.max(w, h));
+  const c = document.createElement("canvas"); c.width = Math.round(w * k); c.height = Math.round(h * k);
+  c.getContext("2d").drawImage(bmp, 0, 0, c.width, c.height);
+  return c.toDataURL("image/jpeg", 0.82).split(",")[1];
+}
+async function pdfPageToJpeg(file) {
+  const lib = await loadPdfJs();
+  const pdf = await lib.getDocument({ data: new Uint8Array(await file.arrayBuffer()) }).promise, page = await pdf.getPage(1);
+  const v0 = page.getViewport({ scale: 1 }), vp = page.getViewport({ scale: Math.min(2.5, 1600 / Math.max(v0.width, v0.height)) });
+  const c = document.createElement("canvas"); c.width = vp.width; c.height = vp.height;
+  await page.render({ canvasContext: c.getContext("2d"), viewport: vp }).promise;
+  return c.toDataURL("image/jpeg", 0.82).split(",")[1];
+}
+const aiErr = e => {
+  busy(false); console.error(e);
+  const code = e?.code || "", msg = String(e?.message || e).replace(/^FirebaseError: /, "");
+  const nice = code === "functions/not-found" ? "le robot IA n'est pas encore installé (étape 2 du guide)."
+    : code === "functions/unavailable" || code === "functions/deadline-exceeded" || !navigator.onLine ? "pas de connexion ou l'IA a mis trop de temps. Réessaie."
+    : code === "functions/unauthenticated" ? "reconnecte-toi puis réessaie." : msg;
+  toast("IA : " + nice, 6500);
+};
+
+/* --- factures lues par l'IA --- */
+async function aiInvoiceFromImage(b64, label) {
+  busy(true, "Lecture de la facture…");
+  let r; try { r = await aiCall("invoice", b64); } catch (e) { return aiErr(e); }
+  busy(false);
+  const today = todayStr(), unpaid = !r.domiciliation && r.due && r.due >= today;
+  const bill = bills().find(b => normSup(b.supplier || b.label) && normSup(r.supplier).includes(normSup(b.supplier || b.label)));
+  const note = [r.summary, r.number && `Facture n° ${r.number}`, r.communication && `Communication : ${r.communication}`, r.iban && `IBAN : ${r.iban}`, r.domiciliation && "Payée par domiciliation", label].filter(Boolean).join("\n");
+  if (finEd.open) finEd.close();
+  openInvoice(null, { supplier: r.supplier, amount: r.amount || "", date: r.date || today, paid: !unpaid, due: unpaid ? r.due : "", note, billId: bill ? bill.id : "", category: r.category || guessFinCat(r.supplier) });
+  const months = { monthly: 1, bimonthly: 2, quarterly: 3, semiannual: 6, yearly: 12 }[r.recurring];
+  const hint = $("#finHint"); hint.hidden = false; hint.classList.toggle("warn", r.confidence === "basse");
+  hint.innerHTML = `🤖 Lu par l'IA (fiabilité ${esc(r.confidence)}). Vérifie puis appuie sur <b>Enregistrer</b>.` + (bill ? `<br>Rattachée à « ${esc(bill.label || bill.supplier)} ».` : "")
+    + (!bill && months ? `<br>Cette facture semble revenir ${esc(monthsLabel(months))}. <a href="#" id="mkBill">Créer la charge « à venir »</a>` : "");
+  const mk = $("#mkBill"); if (mk) mk.onclick = e => { e.preventDefault(); finEd.close(); openBill(null, { label: r.supplier, supplier: r.supplier, amount: r.amount, months, next: addMonthsStr(r.due || r.date || today, months), category: r.category }); };
+}
+
+/* --- tickets de caisse --- */
+const receipts = () => state.fin.filter(f => f.kind === "receipt").sort((a, b) => (b.date || "").localeCompare(a.date || ""));
+let tkEditing = null, tkData = null;
+const tkEd = $("#tkEd"), tkForm = $("#tkForm");
+async function scanReceipt(file) {
+  let b64; try { b64 = await imageToJpegs(file); } catch (e) { return toast("Photo illisible : " + e.message, 5000); }
+  busy(true, b64.length > 1 ? `Lecture du ticket (${b64.length} parties)…` : "Lecture du ticket…");
+  let r; try { r = await aiCall("receipt", b64); } catch (e) { return aiErr(e); }
+  busy(false);
+  openReceipt(null, r);
+}
+function tkRender() {
+  const cats = state.settings.shopCategories, items = tkData.items;
+  const groups = [...cats, ...new Set(items.map(i => i.category).filter(c => !cats.includes(c)))].map(c => [c, items.map((it, n) => ({ it, n })).filter(x => (x.it.category || "Autre") === c)]).filter(g => g[1].length);
+  const sum = items.reduce((s, i) => s + (+i.price || 0), 0), total = parseAmt(tkForm.total.value);
+  const diff = total && Math.abs(sum - total) > 0.05 ? `<div class="conf" style="background:color-mix(in srgb,var(--warn) 14%,var(--card));color:var(--warn)">Somme des articles ${esc(eur(sum))} ≠ total ${esc(eur(total))} (écart ${esc(eur(Math.round((total - sum) * 100) / 100))})</div>` : "";
+  $("#tkItems").innerHTML = diff + groups.map(([c, arr]) => `<div class="group"><span>${esc(c)}</span><span>${esc(eur(arr.reduce((s, x) => s + (+x.it.price || 0), 0)))}</span></div>
+    <div class="card">${arr.map(({ it, n }) => `<div class="row"><input class="nm" data-n="${n}" data-k="name" value="${esc(it.name)}" aria-label="Article">
+      <span class="q">${it.unit === "kg" ? esc(String(it.qty).replace(".", ",")) + " kg" : it.qty > 1 ? "×" + esc(it.qty) : ""}${it.discount ? ` · <span style="color:var(--ok)">−${esc(eur(it.discount))}</span>` : ""}</span>
+      <input class="pr" data-n="${n}" data-k="price" inputmode="decimal" value="${esc((+it.price || 0).toFixed(2).replace(".", ","))}" aria-label="Prix">
+      <button type="button" class="rm" data-n="${n}" aria-label="Retirer">×</button></div>`).join("")}</div>`).join("")
+    + `<div class="small" style="text-align:right;margin-top:6px">${items.length} article(s) · somme ${esc(eur(sum))}</div>`;
+}
+function openReceipt(rec, aiData) {
+  tkEditing = rec ? rec.id : null;
+  const d = rec || aiData;
+  tkData = { ...d, items: (d.items || []).map(i => ({ ...i })) };
+  tkForm.store.value = d.store || ""; tkForm.date.value = d.date || todayStr();
+  tkForm.total.value = d.total ? (+d.total).toFixed(2).replace(".", ",") : ""; tkForm.discounts.value = d.discounts ? (+d.discounts).toFixed(2).replace(".", ",") : "";
+  $("#tkTitle").textContent = rec ? "Ticket de caisse" : "Nouveau ticket";
+  $("#tkDel").hidden = !rec;
+  const hint = $("#tkHint");
+  if (aiData) { hint.hidden = false; hint.className = "small" + (aiData.confidence === "basse" ? " warn" : ""); hint.id = "tkHint";
+    hint.style.cssText = "background:color-mix(in srgb,#16a34a 10%,var(--card));border-radius:12px;padding:8px 10px";
+    hint.innerHTML = `🤖 ${aiData.items.length} articles lus (fiabilité ${esc(aiData.confidence || "?")}). Corrige un nom ou un prix si besoin, puis <b>Enregistrer</b> : la dépense est ajoutée dans Finance et ta liste de courses est cochée.`; }
+  else hint.hidden = true;
+  tkRender(); tkEd.showModal();
+}
+$("#tkItems").addEventListener("change", e => { const t = e.target, n = +t.dataset.n; if (isNaN(n) || !tkData.items[n]) return; if (t.dataset.k === "price") tkData.items[n].price = parseAmt(t.value); else tkData.items[n].name = t.value.trim(); tkRender(); });
+$("#tkItems").addEventListener("click", e => { const b = e.target.closest(".rm"); if (!b) return; tkData.items.splice(+b.dataset.n, 1); tkRender(); });
+tkForm.total.addEventListener("change", tkRender);
+$("#tkClose").onclick = () => tkEd.close();
+tkEd.addEventListener("click", e => { if (e.target === tkEd) tkEd.close(); });
+function autoCheckShopping(items) {
+  const open = state.items.filter(i => i.type === "shop" && i.status !== "done");
+  const names = items.map(i => normSup(i.name));
+  const hits = open.filter(sh => { const k = normSup(sh.title); return k.length >= 3 && names.some(n => n.includes(k) || (n.length >= 4 && k.includes(n)) || k.split(" ").filter(w => w.length >= 4).some(w => n.split(" ").includes(w))); });
+  hits.forEach(h => store.update(h.id, { status: "done" }).catch(() => {}));
+  return hits.length;
+}
+tkForm.onsubmit = async e => {
+  e.preventDefault();
+  const total = parseAmt(tkForm.total.value) || Math.round(tkData.items.reduce((s, i) => s + (+i.price || 0), 0) * 100) / 100;
+  const rec = { kind: "receipt", store: tkForm.store.value.trim() || "Magasin", city: tkData.city || "", date: tkForm.date.value || todayStr(), total, discounts: parseAmt(tkForm.discounts.value),
+    items: tkData.items.map(i => ({ name: i.name, qty: +i.qty || 1, unit: i.unit || "pc", unitPrice: +i.unitPrice || 0, price: +i.price || 0, discount: +i.discount || 0, category: i.category || "Autre" })) };
+  tkEd.close();
+  try {
+    if (tkEditing) {
+      const old = state.fin.find(x => x.id === tkEditing);
+      await store.finUpdate(tkEditing, rec);
+      if (old && old.invoiceId) await store.finUpdate(old.invoiceId, { supplier: rec.store, amount: total, date: rec.date });
+      toast("Ticket mis à jour");
+    } else {
+      const rid = await store.finAdd(rec);
+      const iid = await store.finAdd({ kind: "invoice", supplier: rec.store, amount: total, date: rec.date, category: "Courses", paid: true, due: "", note: `Ticket de caisse — ${rec.items.length} articles`, billId: "", receiptId: rid });
+      await store.finUpdate(rid, { invoiceId: iid });
+      const n = autoCheckShopping(rec.items);
+      toast(`✓ ${eur(total)} ajouté dans Finance${n ? ` · ${n} article(s) de ta liste cochés` : ""}`, 4500);
+    }
+  } catch (err) { fail(err); }
+};
+$("#tkDel").onclick = async () => {
+  const r = state.fin.find(x => x.id === tkEditing); if (!r || !confirm("Supprimer ce ticket (et la dépense liée dans Finance) ?")) return;
+  tkEd.close(); try { if (r.invoiceId) await store.finRemove(r.invoiceId); await store.finRemove(r.id); } catch (e) { fail(e); }
+};
+
+/* --- mémoire des prix (tirée de tes tickets) --- */
+const itemKey = s => normSup(s).replace(/\b\d+([.,]\d+)?\s?(g|kg|l|cl|ml|x|pc|pcs)\b/g, " ").replace(/\b(bio|nature|le|la|les|de|du|des)\b/g, " ").replace(/\s+/g, " ").trim();
+function priceBook() {
+  const book = new Map();
+  receipts().slice().reverse().forEach(r => (r.items || []).forEach(i => {
+    const k = itemKey(i.name); if (!k) return;
+    const unit = i.unit === "kg" ? (+i.unitPrice || (+i.price / (+i.qty || 1))) : (+i.price || 0) / (+i.qty || 1);
+    const e = book.get(k) || { name: i.name, history: [] };
+    e.history.push({ date: r.date, store: r.store, unit: Math.round(unit * 100) / 100, unitKind: i.unit, line: +i.price || 0, qty: +i.qty || 1 });
+    e.last = e.history[e.history.length - 1]; e.name = i.name; book.set(k, e);
+  }));
+  return book;
+}
+function estimateFor(title, qtyTxt, book) {
+  const k = itemKey(title); if (!k || !book.size) return null;
+  let e = book.get(k);
+  if (!e) { const words = k.split(" ").filter(w => w.length >= 3); let best = 0;
+    for (const [bk, v] of book) { const bw = bk.split(" "); const sc = words.filter(w => bw.includes(w)).length / Math.max(words.length, 1); if (sc > best && sc >= 0.5) { best = sc; e = v; } } }
+  if (!e) return null;
+  const q = parseFloat(String(qtyTxt || "").replace(",", ".")), isKg = /kg/i.test(qtyTxt || ""), isG = /\bg\b/i.test(qtyTxt || "");
+  let price;
+  if (e.last.unitKind === "kg") price = e.last.unit * (isKg ? q : isG ? q / 1000 : e.last.qty);
+  else price = e.last.unit * (q && !isKg && !isG ? q : e.last.qty > 1 ? 1 : 1);
+  return { price: Math.round(price * 100) / 100, from: e };
+}
+function groceryAvg() {
+  const t = new Date(), m0 = ymd(new Date(t.getFullYear(), t.getMonth(), 1)), from = ymd(new Date(t.getFullYear(), t.getMonth() - 3, 1));
+  const cour = invoices().filter(i => i.category === "Courses");
+  const past = cour.filter(i => i.date >= from && i.date < m0).reduce((s, i) => s + (+i.amount || 0), 0);
+  const months = new Set(cour.filter(i => i.date >= from && i.date < m0).map(i => i.date.slice(0, 7))).size;
+  return { avg: months ? past / months : 0, thisMonth: cour.filter(i => i.date >= m0).reduce((s, i) => s + (+i.amount || 0), 0) };
+}
+
+/* --- analyse des courses --- */
+function renderShopAnalysis() {
+  const recs = receipts(), yr = String(new Date().getFullYear()), m0 = todayStr().slice(0, 7);
+  if (!recs.length) return `<div class="empty">Aucun ticket pour l'instant.<br><small>Scanne ton prochain ticket de caisse avec 📷 : l'analyse se construit toute seule.</small></div>`;
+  const g = groceryAvg(), thisM = recs.filter(r => r.date.startsWith(m0)).reduce((s, r) => s + (+r.total || 0), 0);
+  const saved = recs.filter(r => r.date.startsWith(yr)).reduce((s, r) => s + (+r.discounts || 0), 0);
+  const since = ymd(addDays(new Date(), -90)), byCat = {}, byItem = {};
+  recs.filter(r => r.date >= since).forEach(r => (r.items || []).forEach(i => { byCat[i.category || "Autre"] = (byCat[i.category || "Autre"] || 0) + (+i.price || 0); }));
+  recs.filter(r => r.date.startsWith(yr)).forEach(r => (r.items || []).forEach(i => { const k = itemKey(i.name); if (!k) return; const e = byItem[k] = byItem[k] || { name: i.name, sum: 0, n: 0 }; e.sum += +i.price || 0; e.n++; }));
+  const cmax = Math.max(1, ...Object.values(byCat)), top = Object.values(byItem).sort((a, b) => b.sum - a.sum).slice(0, 10), tmax = Math.max(1, ...top.map(t => t.sum));
+  const book = priceBook(), moves = [];
+  for (const e of book.values()) { const h = e.history.filter(x => x.date >= ymd(addDays(new Date(), -365))); if (h.length < 2 || !h[0].unit) continue; const pct = Math.round((h[h.length - 1].unit / h[0].unit - 1) * 100); if (Math.abs(pct) >= 10) moves.push({ name: e.name, pct, a: h[0], b: h[h.length - 1] }); }
+  moves.sort((a, b) => b.pct - a.pct);
+  // comparaison magasins sur les mêmes articles
+  const stores = {}; for (const e of book.values()) { const per = {}; e.history.forEach(h => { if (h.unit) (per[h.store] = per[h.store] || []).push(h.unit); }); const ks = Object.keys(per); if (ks.length < 2) continue;
+    const avgs = Object.fromEntries(ks.map(k => [k, per[k].reduce((a, b) => a + b, 0) / per[k].length])); const min = Math.min(...Object.values(avgs));
+    ks.forEach(k => { (stores[k] = stores[k] || []).push(avgs[k] / min); }); }
+  const storeIdx = Object.entries(stores).map(([k, v]) => [k, v.reduce((a, b) => a + b, 0) / v.length, v.length]).sort((a, b) => a[1] - b[1]);
+  const fbar = (lbl, v, max, txt) => `<div class="fbar" style="grid-template-columns:118px 1fr 74px"><span class="m" style="overflow:hidden;text-overflow:ellipsis;white-space:nowrap">${esc(lbl)}</span><span class="track"><span class="fill" style="width:${(v / max * 100).toFixed(1)}%"></span></span><span class="amt" style="text-align:right">${esc(txt)}</span></div>`;
+  return `<div class="kpis"><div class="kpi"><div class="v">${esc(eur(Math.round(thisM)))}</div><div class="l">Courses ce mois-ci</div></div>
+      <div class="kpi"><div class="v">${g.avg ? esc(eur(Math.round(g.avg))) : "—"}</div><div class="l">Moyenne / mois (3 derniers mois)</div></div>
+      <div class="kpi"><div class="v" style="color:var(--ok)">${esc(eur(Math.round(saved)))}</div><div class="l">Économisé en promos (${yr})</div></div>
+      <div class="kpi"><div class="v">${recs.length}</div><div class="l">Tickets analysés</div></div></div>
+    <div class="group"><span>Par rayon · 90 derniers jours</span><span>${esc(eur(Math.round(Object.values(byCat).reduce((a, b) => a + b, 0))))}</span></div>
+    <div class="card">${Object.entries(byCat).sort((a, b) => b[1] - a[1]).map(([c, v]) => fbar(c, v, cmax, eur(Math.round(v)))).join("")}</div>
+    <div class="group"><span>Ce qui coûte le plus en ${yr}</span><span></span></div>
+    <div class="card">${top.map(t => fbar(t.name, t.sum, tmax, eur(Math.round(t.sum)))).join("")}</div>
+    ${moves.length ? `<div class="group"><span>Prix qui bougent (12 mois)</span><span></span></div><div class="card">${moves.slice(0, 8).map(m => `<div class="rl"><span class="ic">${m.pct > 0 ? "📈" : "📉"}</span><span class="t">${esc(m.name)}</span><span class="d" style="color:${m.pct > 0 ? "var(--danger)" : "var(--ok)"};font-weight:700">${m.pct > 0 ? "+" : ""}${m.pct} %</span></div>`).join("")}</div>` : ""}
+    ${storeIdx.length >= 2 ? `<div class="group"><span>Magasins (mêmes articles)</span><span></span></div><div class="card">${storeIdx.map(([k, v, n], i) => `<div class="rl"><span class="ic">${i === 0 ? "🏆" : "🏬"}</span><span class="t">${esc(k)}</span><span class="d">${i === 0 ? "le moins cher" : "+" + Math.round((v - 1) * 100) + " %"} · ${n} art.</span></div>`).join("")}</div>` : ""}
+    <div class="group"><span>Tickets</span><span></span></div>
+    <div class="card">${recs.slice(0, 30).map(r => `<div class="rl" data-act="openrec" data-id="${r.id}"><span class="ic">🧾</span><span class="t">${esc(r.store)}${r.city ? " · " + esc(r.city) : ""}</span><span class="d">${esc(fmtDay(r.date))} · <b>${esc(eur(r.total))}</b></span></div>`).join("")}</div>`;
+}
 
 /* --- éditeur Finance --- */
 const finEd = $("#finEd"), finForm = $("#finForm");
@@ -1332,7 +1628,7 @@ function openInvoice(inv, preset = {}) {
   finEditing = inv ? inv.id : null;
   const o = inv || { supplier: "", amount: "", date: todayStr(), category: "", paid: true, due: "", note: "", billId: "", ...preset };
   finForm.dataset.kind = "invoice"; $("#finTitle").textContent = inv ? "Modifier la facture" : "Nouvelle facture";
-  $("#finHint").hidden = true; $("#finPdf").hidden = !!inv;
+  $("#finHint").hidden = true; $("#finPdf").hidden = !!inv; $("#finPhoto").hidden = !!inv || !aiOn();
   finForm.supplier.value = o.supplier || ""; finForm.amount.value = o.amount !== "" && o.amount != null ? (+o.amount).toFixed(2).replace(".", ",") : "";
   finForm.date.value = o.date || todayStr(); finForm.paid.value = o.paid === false ? "0" : "1"; finForm.due.value = o.due || ""; finForm.fnote.value = o.note || "";
   fillFinCats(o.category || guessFinCat(o.supplier));
@@ -1490,6 +1786,7 @@ $("#tabs").onclick = e => { const b = e.target.closest("button"); if (!b) return
 $("#fab").onclick = () => {
   if (state.view === "agenda") openEditor(null, { type: "event", date: state.agenda.mode === "month" ? (state.agenda.open || todayStr()) : todayStr() });
   else if (state.view === "finance") openInvoice(null);
+  else if (state.view === "shop" && state.shopTab === "stats" && aiOn()) { imgPurpose = "receipt"; $("#imgInput").click(); }
   else if (state.view === "shop") openEditor(null, { type: "shop", category: ls.get("na.shopcat", "Autre") });
   else openEditor(null, { type: "task" });
 };
@@ -1533,6 +1830,10 @@ main.addEventListener("click", e => {
     case "fintab": state.finTab = el.dataset.v; ls.set("na.fintab", state.finTab); render(); break;
     case "quickInv": quickInvoice(); break;
     case "pdfpick": $("#pdfInput").click(); break;
+    case "photopick": imgPurpose = "invoice"; $("#imgInput").click(); break;
+    case "scanrec": imgPurpose = "receipt"; $("#imgInput").click(); break;
+    case "shoptab": state.shopTab = el.dataset.v; render(); break;
+    case "openrec": { const r = state.fin.find(x => x.id === id); if (r) openReceipt(r); break; }
     case "editinv": openInvoice(state.fin.find(x => x.id === id)); break;
     case "editbill": { const b = state.fin.find(x => x.id === id); if (b) openBill(b); break; }
     case "newbill": openBill(null); break;
@@ -1616,6 +1917,26 @@ main.addEventListener("keydown", e => {
   else if (e.target.id === "quickShop") { e.preventDefault(); quickAdd("shop"); }
   else if (e.target.id?.startsWith("new-")) { e.preventDefault(); e.target.nextElementSibling.click(); }
 });
+
+/* ---------- nouvelle version disponible ? ---------- */
+let updShown = false;
+async function checkUpdate() {
+  if (updShown || DEMO || !navigator.onLine) return;
+  try {
+    const txt = await (await fetch(location.pathname + "?v=" + Date.now(), { cache: "no-store" })).text();
+    const m = txt.match(/const APP_VERSION = "([^"]+)"/);
+    if (m && m[1] !== APP_VERSION) {
+      updShown = true;
+      const bar = document.createElement("div"); bar.id = "updBar";
+      bar.innerHTML = `✨ Nouvelle version ${esc(m[1].split(" — ")[0])} disponible<button>Recharger</button>`;
+      bar.querySelector("button").onclick = () => location.replace(location.pathname + "?v=" + Date.now());
+      document.body.appendChild(bar);
+    }
+  } catch {}
+}
+document.addEventListener("visibilitychange", () => { if (document.visibilityState === "visible") checkUpdate(); });
+setInterval(checkUpdate, 30 * 60 * 1000);
+setTimeout(checkUpdate, 8000);
 
 boot();
 </script>
