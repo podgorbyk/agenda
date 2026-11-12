@@ -326,6 +326,14 @@ nav.tabs button.plus span{width:62px;height:62px;border-radius:50%;display:grid;
 .dayopen .row::before{display:none}
 .dayopen .time{color:var(--ink);opacity:.8}
 .dayopen .add{background:linear-gradient(180deg,var(--accent-2),var(--accent));color:#fff;border-radius:10px}
+
+/* 3.2.1 — structure « appli » : seule la zone centrale défile, la barre du bas reste collée (correctif iPhone) */
+html{height:100%;overflow:hidden}
+body{height:100%;overflow:hidden;display:flex;flex-direction:column;padding-bottom:0;background:linear-gradient(180deg,var(--bg) 0%,var(--bg2) 100%)}
+header.top{position:relative;flex:none;backdrop-filter:none;-webkit-backdrop-filter:none;background:transparent}
+main{flex:1 1 auto;min-height:0;width:100%;overflow-y:auto;overflow-x:hidden;-webkit-overflow-scrolling:touch;overscroll-behavior-y:contain;padding-bottom:40px}
+nav.tabs{position:relative;flex:none;backdrop-filter:none;-webkit-backdrop-filter:none;background:var(--card)}
+nav.tabs[hidden]{display:none}
 </style>
 </head>
 <body>
@@ -473,7 +481,7 @@ const DEFAULT_SETTINGS = {
 };
 
 /* ---------- espaces : chaque foyer a son agenda privé, seule la catégorie partagée est commune ---------- */
-const APP_VERSION = "3.2 — 12 nov. 2026";
+const APP_VERSION = "3.2.1 — 12 nov. 2026";
 const SHARED_CAT = "Sombreffe";
 const FIN_CAT = "Finance", FIN_COLOR = "#16a34a";
 const FIN_CATS = ["Courses", "Énergie", "Eau", "Assurance", "Télécom & internet", "Impôts & taxes", "Voiture", "École & enfants", "Santé", "Maison", "Banque & crédit", "Abonnements", "Autre"];
@@ -1977,9 +1985,9 @@ $("#edDel").onclick = () => { if (editing && confirm("Supprimer cet élément ?"
 $("#edDup").onclick = () => { const o = readForm(); store.add({ ...o, title: o.title + " (copie)" }).catch(fail); ed.close(); toast("Dupliqué"); };
 
 /* ---------- interactions ---------- */
-$("#hdrSettings").onclick = () => { state.view = state.view === "settings" ? ls.get("na.prevView", "agenda") : "settings"; ls.set("na.view", state.view); scrollTo(0, 0); render(); };
+$("#hdrSettings").onclick = () => { state.view = state.view === "settings" ? ls.get("na.prevView", "agenda") : "settings"; ls.set("na.view", state.view); $("#main").scrollTop = 0; render(); };
 $("#tabs").onclick = e => { const b = e.target.closest("button"); if (!b) return;
-  if (b.id === "tabPlus") { $("#fab").onclick(); return; } ls.set("na.prevView", b.dataset.view); state.view = b.dataset.view; ls.set("na.view", state.view); scrollTo(0, 0); render(); };
+  if (b.id === "tabPlus") { $("#fab").onclick(); return; } ls.set("na.prevView", b.dataset.view); state.view = b.dataset.view; ls.set("na.view", state.view); $("#main").scrollTop = 0; render(); };
 $("#fab").onclick = () => {
   if (state.view === "agenda") openEditor(null, { type: "event", date: state.agenda.mode === "month" ? (state.agenda.open || todayStr()) : todayStr() });
   else if (state.view === "finance") openInvoice(null);
