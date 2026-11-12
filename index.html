@@ -155,7 +155,20 @@ textarea{min-height:70px;resize:vertical}
 .f-linkinfo{background:color-mix(in srgb,#16a34a 10%,var(--card));border-radius:10px;padding:7px 10px;color:var(--ink)}
 #finHint{background:color-mix(in srgb,#16a34a 10%,var(--card));border:1px solid color-mix(in srgb,#16a34a 35%,transparent);border-radius:12px;padding:8px 10px;color:var(--ink);line-height:1.45}
 .ticket .row{padding:8px 10px;gap:8px;align-items:center}
-#tkForm,#finForm,#edForm{grid-template-columns:minmax(0,1fr)}
+#tkForm,#finForm,#edForm,#bankForm,#catForm{grid-template-columns:minmax(0,1fr)}
+.mrow{display:grid;grid-template-columns:62px 1fr auto;gap:8px;align-items:center;padding:9px 12px;border-bottom:1px solid var(--line);font-size:14px}
+.mrow:last-child{border-bottom:0}
+.mrow.on{background:color-mix(in srgb,var(--accent) 10%,var(--card))}
+.mbars{display:grid;gap:3px}
+.mbars span{display:block;height:7px;border-radius:4px}
+.mbars .in{background:#16a34a}.mbars .out{background:var(--danger)}
+.pos{color:var(--ok);font-weight:700}.neg{color:var(--danger);font-weight:700}
+.txl{display:flex;gap:10px;align-items:center;padding:8px 12px;border-bottom:1px solid var(--line);font-size:14px}
+.txl:last-child{border-bottom:0}
+.txl .t{flex:1;min-width:0;overflow:hidden;text-overflow:ellipsis;white-space:nowrap}
+.txl .c{font-size:11.5px;color:var(--mute)}
+.bkchk{display:flex;gap:10px;align-items:flex-start;padding:8px 2px;border-bottom:1px solid var(--line);font-size:14px}
+.bkchk input{width:20px;height:20px;flex:none;margin-top:1px}
 .ticket input.nm{border:0;background:transparent;padding:2px 0;min-height:0;font-size:15px;flex:1 1 0;width:0;min-width:0}
 .ticket input.pr{border:1px solid var(--line);border-radius:10px;background:var(--card);width:76px;text-align:right;min-height:34px;padding:4px 8px;font-variant-numeric:tabular-nums}
 .ticket .rm{border:0;background:var(--soft);border-radius:50%;width:26px;height:26px;color:var(--mute);flex:none;padding:0}
@@ -380,6 +393,25 @@ nav.tabs button.plus span{width:62px;height:62px;border-radius:50%;display:grid;
     <div class="actions"><button type="button" class="btn danger" id="tkDel">Supprimer</button><button type="submit" class="btn primary">Enregistrer</button></div>
   </form>
 </dialog>
+<dialog id="bankEd">
+  <form id="bankForm" autocomplete="off" style="padding:14px 16px calc(16px + env(safe-area-inset-bottom));display:grid;gap:12px">
+    <div class="sheet-head"><h2>Importer l'historique</h2><button type="button" class="x" id="bankClose" aria-label="Fermer">×</button></div>
+    <div id="bankSum" class="small"></div>
+    <div><div class="nsub">↻ Charges récurrentes détectées → « À venir »</div><div class="small">Décoche ce que tu ne veux pas ajouter.</div><div id="bankBills"></div></div>
+    <button type="submit" class="btn primary">Importer</button>
+  </form>
+</dialog>
+<dialog id="catEd">
+  <form id="catForm" autocomplete="off" style="padding:14px 16px calc(16px + env(safe-area-inset-bottom));display:grid;gap:12px">
+    <div class="sheet-head"><h2>Catégorie</h2><button type="button" class="x" id="catClose" aria-label="Fermer">×</button></div>
+    <div id="catTx" class="small"></div>
+    <select name="cat"></select>
+    <input type="text" name="newcat" placeholder="… ou nouvelle catégorie">
+    <label class="toggle sw"><input type="checkbox" name="all" checked> <span id="catAllLbl">Appliquer à tous les mouvements identiques</span></label>
+    <button type="submit" class="btn primary">Enregistrer</button>
+  </form>
+</dialog>
+<input type="file" id="bankInput" accept="application/json,.json" hidden>
 <dialog id="finEd">
   <form id="finForm" data-kind="invoice" autocomplete="off">
     <div class="sheet-head"><h2 id="finTitle">Facture</h2><button type="button" class="x" id="finClose" aria-label="Fermer">×</button></div>
@@ -441,7 +473,7 @@ const DEFAULT_SETTINGS = {
 };
 
 /* ---------- espaces : chaque foyer a son agenda privé, seule la catégorie partagée est commune ---------- */
-const APP_VERSION = "3.1.1 — 12 nov. 2026";
+const APP_VERSION = "3.2 — 12 nov. 2026";
 const SHARED_CAT = "Sombreffe";
 const FIN_CAT = "Finance", FIN_COLOR = "#16a34a";
 const FIN_CATS = ["Courses", "Énergie", "Eau", "Assurance", "Télécom & internet", "Impôts & taxes", "Voiture", "École & enfants", "Santé", "Maison", "Banque & crédit", "Abonnements", "Autre"];
@@ -532,7 +564,8 @@ function createLocalStore() {
     onFinance(cb) { fL.add(cb); cb(data.fin.slice()); },
     async finAdd(o) { const id = uid(); data.fin.push({ ...o, id, createdAt: now(), updatedAt: now() }); emit(); return id; },
     async finUpdate(id, p) { const x = data.fin.find(f => f.id === id); if (x) Object.assign(x, p, { updatedAt: now() }); emit(); },
-    async finRemove(id) { data.fin = data.fin.filter(f => f.id !== id); emit(); }
+    async finRemove(id) { data.fin = data.fin.filter(f => f.id !== id); emit(); },
+    async finSet(id, o) { data.fin = data.fin.filter(f => f.id !== id); data.fin.push({ ...o, id, updatedAt: now() }); emit(); }
   };
 }
 function demoFinance() {
@@ -630,7 +663,8 @@ function createCloudStore(fb, user) {
     onFinance(cb, onErr) { return space === "famille" ? f.onSnapshot(f.collection(db, "finance"), snap => cb(snap.docs.map(d => ({ id: d.id, ...d.data() }))), onErr) : () => {}; },
     async finAdd(o) { const r = await f.addDoc(f.collection(db, "finance"), { ...strip(o), createdAt: now(), updatedAt: now(), by }); return r.id; },
     finUpdate(id, p) { return f.updateDoc(f.doc(db, "finance", id), { ...strip(p), updatedAt: now(), by }); },
-    finRemove(id) { return f.deleteDoc(f.doc(db, "finance", id)); }
+    finRemove(id) { return f.deleteDoc(f.doc(db, "finance", id)); },
+    finSet(id, o) { return f.setDoc(f.doc(db, "finance", id), { ...strip(o), updatedAt: now(), by }); }
   };
 }
 const fail = e => { console.error(e); toast(e?.code === "permission-denied" ? "Accès refusé : ce compte n'est pas autorisé." : "Erreur : " + (e?.message || e)); };
@@ -1219,7 +1253,8 @@ function dueLabel(ds) {
 function renderFinance() {
   const tab = state.finTab;
   const seg = (v, l) => `<button class="${tab === v ? "on" : ""}" data-act="fintab" data-v="${v}">${l}</button>`;
-  const head = `<div class="seg" style="margin:4px 0 12px">${seg("upcoming", "À venir")}${seg("invoices", "Factures")}${seg("forecast", "Prévision")}</div>`;
+  const head = `<div class="seg" style="margin:4px 0 12px">${seg("upcoming", "À venir")}${seg("invoices", "Factures")}${seg("forecast", "Prévision")}${seg("bank", "Compte")}</div>`;
+  if (tab === "bank") return head + renderBank();
   const today = todayStr(), in30 = ymd(addDays(new Date(), 30));
   if (tab === "invoices") {
     const year = state.finYear, cat = state.finCat;
@@ -1595,12 +1630,126 @@ function estimateFor(title, qtyTxt, book) {
   return { price: Math.round(price * 100) / 100, from: e };
 }
 function groceryAvg() {
+  const bf = bankFullMonths();
+  if (bf.length >= 2) {
+    const avg = -bf.reduce((a, m) => a + (m.tx || []).filter(t => t.c === "Courses").reduce((s, t) => s + t.a, 0), 0) / bf.length;
+    const m0 = todayStr().slice(0, 7);
+    return { avg, thisMonth: invoices().filter(i => i.category === "Courses" && (i.date || "").startsWith(m0)).reduce((s, i) => s + (+i.amount || 0), 0), source: "banque" };
+  }
   const t = new Date(), m0 = ymd(new Date(t.getFullYear(), t.getMonth(), 1)), from = ymd(new Date(t.getFullYear(), t.getMonth() - 3, 1));
   const cour = invoices().filter(i => i.category === "Courses");
   const past = cour.filter(i => i.date >= from && i.date < m0).reduce((s, i) => s + (+i.amount || 0), 0);
   const months = new Set(cour.filter(i => i.date >= from && i.date < m0).map(i => i.date.slice(0, 7))).size;
   return { avg: months ? past / months : 0, thisMonth: cour.filter(i => i.date >= m0).reduce((s, i) => s + (+i.amount || 0), 0) };
 }
+
+/* --- Compte bancaire (historique importé) --- */
+const BANK_INTERNAL = ["Épargne (interne)", "Virement interne"];
+const bankMonths = () => state.fin.filter(f => f.kind === "bankmonth").sort((a, b) => a.month.localeCompare(b.month));
+const bankTx = () => bankMonths().flatMap(m => (m.tx || []).map(t => ({ ...t, month: m.month })));
+function bankFullMonths() {
+  const ms = bankMonths(); if (ms.length <= 2) return ms;
+  return ms.filter((m, i) => { const tx = (m.tx || []).filter(t => t.s !== "m"); if (!tx.length) return false;   // complet = relevés du compte du début à la fin du mois
+    const first = Math.min(...tx.map(t => +t.d.slice(8))), last = Math.max(...tx.map(t => +t.d.slice(8)));
+    return !(i === 0 && first > 5) && !(i === ms.length - 1 && last < 25); });
+}
+function monthStats(m) {
+  let inn = 0, out = 0; const cats = {};
+  (m.tx || []).forEach(t => { if (BANK_INTERNAL.includes(t.c)) return; if (t.a > 0) inn += t.a; else out += t.a; cats[t.c] = (cats[t.c] || 0) + t.a; });
+  return { inn, out, net: inn + out, cats };
+}
+const mLabel = (m, long) => parseYmd(m + "-01").toLocaleDateString("fr-BE", long ? { month: "long", year: "numeric" } : { month: "short", year: "2-digit" });
+function renderBank() {
+  const ms = bankMonths();
+  if (!ms.length) return `<div class="empty">Aucun historique bancaire.<br><small>Importe le fichier préparé (import-banque.json) : dépenses par mois et par catégorie, revenus, et charges récurrentes ajoutées en « À venir ».</small></div>
+    <button class="btn primary" data-act="bankimport" style="width:100%">📥 Importer l'historique bancaire</button>`;
+  const full = bankFullMonths(), st = full.map(monthStats), n = Math.max(st.length, 1);
+  const avgIn = st.reduce((a, x) => a + x.inn, 0) / n, avgOut = st.reduce((a, x) => a + x.out, 0) / n;
+  const all = ms.map(m => ({ m: m.month, ...monthStats(m) })), max = Math.max(1, ...all.map(x => Math.max(x.inn, -x.out)));
+  const sel = state.bankMonth && ms.some(m => m.month === state.bankMonth) ? state.bankMonth : null, cf = state.bankCat || "";
+  const avgCats = {}; st.forEach(x => Object.entries(x.cats).forEach(([c, v]) => avgCats[c] = (avgCats[c] || 0) + v / n));
+  const spend = Object.entries(avgCats).filter(([, v]) => v < 0).sort((a, b) => a[1] - b[1]), inc = Object.entries(avgCats).filter(([, v]) => v > 0).sort((a, b) => b[1] - a[1]);
+  const smax = Math.max(1, ...spend.map(([, v]) => -v));
+  const catBar = (c, v, max, act) => `<div class="fbar" data-act="${act}" data-v="${esc(c)}" style="grid-template-columns:128px 1fr 74px;${cf === c ? "background:color-mix(in srgb,var(--accent) 10%,var(--card))" : ""}"><span class="m" style="overflow:hidden;text-overflow:ellipsis;white-space:nowrap">${esc(c)}</span><span class="track"><span class="fill" style="width:${(Math.abs(v) / max * 100).toFixed(1)}%;${v > 0 ? "" : "background:var(--danger)"}"></span></span><span class="amt" style="text-align:right">${esc(eur(Math.round(Math.abs(v))))}</span></div>`;
+  let detail = "";
+  if (sel || cf) {
+    const scope = sel ? ms.filter(m => m.month === sel) : ms;
+    const tx = scope.flatMap(m => (m.tx || []).map(t => ({ ...t, month: m.month }))).filter(t => !cf || t.c === cf).sort((a, b) => b.d.localeCompare(a.d));
+    const sum = tx.filter(t => !BANK_INTERNAL.includes(t.c)).reduce((a, t) => a + t.a, 0);
+    const mc = sel ? monthStats(scope[0]).cats : null;
+    detail = `<div class="group"><span>${sel ? esc(mLabel(sel, true)) : "Tous les mois"}${cf ? " · " + esc(cf) : ""}</span><button class="btn small" data-act="bankclear">✕ Fermer</button></div>
+      ${sel && !cf ? `<div class="card">${Object.entries(mc).sort((a, b) => a[1] - b[1]).map(([c, v]) => catBar(c, v, Math.max(1, ...Object.values(mc).map(Math.abs)), "bankcat")).join("")}</div><div class="group"><span>Mouvements</span><span>${tx.length}</span></div>` : `<div class="small" style="margin:-4px 2px 6px">${tx.length} mouvement(s) · total ${esc(eur(Math.round(sum * 100) / 100))}</div>`}
+      <div class="card">${tx.slice(0, 300).map(t => `<div class="txl" data-act="banktx" data-id="${esc(t.id)}" data-m="${esc(t.month)}"><span style="width:44px;color:var(--mute);font-size:12.5px">${esc(t.d.slice(8))}/${esc(t.d.slice(5, 7))}</span>
+        <span class="t">${esc(t.l)}<br><span class="c">${esc(t.c)}${t.s === "m" ? " · Mastercard" : ""}</span></span><span class="${t.a > 0 ? "pos" : ""}" style="font-variant-numeric:tabular-nums;white-space:nowrap">${t.a > 0 ? "+" : ""}${esc(eur(t.a))}</span></div>`).join("")}</div>`;
+  }
+  const first = ms[0].month, last = ms[ms.length - 1].month;
+  return `<div class="kpis"><div class="kpi"><div class="v" style="color:var(--ok)">${esc(eur(Math.round(avgIn)))}</div><div class="l">Entrées / mois</div></div>
+      <div class="kpi"><div class="v" style="color:var(--danger)">${esc(eur(Math.round(-avgOut)))}</div><div class="l">Sorties / mois</div></div>
+      <div class="kpi"><div class="v ${avgIn + avgOut >= 0 ? "pos" : "neg"}">${avgIn + avgOut >= 0 ? "+" : ""}${esc(eur(Math.round(avgIn + avgOut)))}</div><div class="l">Solde moyen / mois</div></div>
+      <div class="kpi"><div class="v">${st.filter(x => x.net < 0).length}/${st.length}</div><div class="l">Mois dans le rouge</div></div></div>
+    <div class="small" style="margin:-6px 2px 10px">Moyennes sur ${st.length} mois complets (${esc(mLabel(full[0]?.month || first))} → ${esc(mLabel(full[full.length - 1]?.month || last))}). Épargne et virements internes exclus.</div>
+    ${detail}
+    <div class="group"><span>Mois par mois</span><span>touche un mois</span></div>
+    <div class="card">${all.map(x => `<div class="mrow ${x.m === sel ? "on" : ""}" data-act="bankmonth" data-v="${x.m}"><span style="font-weight:600">${esc(mLabel(x.m))}</span>
+      <span class="mbars"><span class="in" style="width:${(x.inn / max * 100).toFixed(1)}%"></span><span class="out" style="width:${(-x.out / max * 100).toFixed(1)}%"></span></span>
+      <span class="${x.net >= 0 ? "pos" : "neg"}" style="font-variant-numeric:tabular-nums">${x.net >= 0 ? "+" : ""}${esc(eur(Math.round(x.net)))}</span></div>`).join("")}</div>
+    <div class="group"><span>Dépenses moyennes / mois</span><span>${esc(eur(Math.round(-avgOut)))}</span></div>
+    <div class="card">${spend.map(([c, v]) => catBar(c, v, smax, "bankcat")).join("")}</div>
+    <div class="group"><span>Revenus moyens / mois</span><span>${esc(eur(Math.round(avgIn)))}</span></div>
+    <div class="card">${inc.map(([c, v]) => catBar(c, v, Math.max(1, ...inc.map(([, x]) => x)), "bankcat")).join("")}</div>
+    <button class="btn" data-act="bankimport" style="width:100%;margin-top:14px">📥 Ré-importer / mettre à jour l'historique</button>`;
+}
+let bankPending = null;
+const bankEd = $("#bankEd"), catEd = $("#catEd");
+$("#bankClose").onclick = () => bankEd.close();
+$("#catClose").onclick = () => catEd.close();
+$("#bankInput").addEventListener("change", async e => {
+  const f = e.target.files[0]; e.target.value = ""; if (!f) return;
+  let data; try { data = JSON.parse(await f.text()); } catch { return toast("Fichier illisible"); }
+  if (data.type !== "notre-agenda-banque" || !data.months) return toast("Ce n'est pas un fichier d'historique bancaire préparé.", 5000);
+  bankPending = data;
+  const nTx = Object.values(data.months).reduce((a, m) => a + m.length, 0);
+  const have = new Set(bills().flatMap(b => [normSup(b.label), normSup(b.supplier)]).filter(Boolean));
+  $("#bankSum").innerHTML = `<b>${nTx}</b> mouvements, ${Object.keys(data.months).length} mois (${esc(fmtDay(data.from, { day: "numeric", month: "short", year: "numeric" }))} → ${esc(fmtDay(data.to, { day: "numeric", month: "short", year: "numeric" }))}).<br>Ré-importer remplace les mois concernés, sans doublon.`;
+  $("#bankBills").innerHTML = (data.bills || []).map((b, n) => { const dup = have.has(normSup(b.label)) || have.has(normSup(b.supplier));
+    return `<label class="bkchk"><input type="checkbox" data-n="${n}" ${dup ? "" : "checked"}><span><b>${esc(b.label)}</b> · ${esc(eur(b.amount))} ${esc(monthsLabel(b.months))}<br><span class="small">prochaine : ${esc(fmtDay(b.next, { day: "numeric", month: "short", year: "numeric" }))}${b.note ? " · " + esc(b.note) : ""}${dup ? " · <b>déjà dans « À venir »</b>" : ""}</span></span></label>`; }).join("");
+  bankEd.showModal();
+});
+$("#bankForm").onsubmit = async e => {
+  e.preventDefault(); if (!bankPending) return;
+  const data = bankPending, picks = [...$("#bankBills").querySelectorAll("input:checked")].map(i => data.bills[+i.dataset.n]);
+  bankEd.close(); busy(true, "Import en cours…");
+  try {
+    for (const [m, tx] of Object.entries(data.months)) await store.finSet(`bank-${m}`, { kind: "bankmonth", month: m, account: data.account || "", tx });
+    for (const b of picks) await store.finAdd({ kind: "bill", label: b.label, supplier: b.supplier || b.label, amount: b.amount, months: b.months, next: b.next, category: b.category, note: b.note || "", active: true });
+    busy(false); toast(`✓ Historique importé${picks.length ? ` · ${picks.length} charge(s) ajoutée(s) dans « À venir »` : ""}`, 5000);
+    state.finTab = "bank"; render();
+  } catch (err) { busy(false); fail(err); }
+  bankPending = null;
+};
+let catTarget = null;
+function openTxCat(id, month) {
+  const m = bankMonths().find(x => x.month === month), t = m && (m.tx || []).find(x => x.id === id); if (!t) return;
+  catTarget = { id, month, label: t.l };
+  const cats = [...new Set([...bankTx().map(x => x.c), ...FIN_CATS])].sort((a, b) => a.localeCompare(b, "fr"));
+  const F = $("#catForm"); F.cat.innerHTML = cats.map(c => `<option ${c === t.c ? "selected" : ""}>${esc(c)}</option>`).join(""); F.newcat.value = "";
+  const same = bankTx().filter(x => x.l === t.l).length;
+  $("#catTx").innerHTML = `<b>${esc(t.l)}</b> · ${esc(eur(t.a))} · ${esc(fmtDay(t.d))}`;
+  $("#catAllLbl").textContent = `Appliquer aux ${same} mouvements « ${t.l} »`;
+  F.all.checked = same > 1; F.all.parentElement.style.display = same > 1 ? "" : "none";
+  catEd.showModal();
+}
+$("#catForm").onsubmit = async e => {
+  e.preventDefault(); const F = e.target, c = F.newcat.value.trim() || F.cat.value; if (!catTarget || !c) return;
+  catEd.close();
+  try {
+    for (const m of bankMonths()) {
+      let ch = false; const tx = (m.tx || []).map(t => { if ((F.all.checked && t.l === catTarget.label) || (t.id === catTarget.id && m.month === catTarget.month)) { ch = true; return { ...t, c }; } return t; });
+      if (ch) await store.finSet(m.id, { kind: "bankmonth", month: m.month, account: m.account || "", tx });
+    }
+    toast(`Classé en « ${c} »`);
+  } catch (err) { fail(err); }
+};
 
 /* --- analyse des courses --- */
 function renderShopAnalysis() {
@@ -1876,6 +2025,11 @@ main.addEventListener("click", e => {
     case "quickShop": quickAdd("shop"); break;
     case "clearShop": store.removeMany(state.items.filter(i => i.type === "shop" && i.status === "done").map(i => i.id)).catch(fail); break;
     case "fintab": state.finTab = el.dataset.v; ls.set("na.fintab", state.finTab); render(); break;
+    case "bankimport": $("#bankInput").click(); break;
+    case "bankmonth": state.bankMonth = state.bankMonth === el.dataset.v ? null : el.dataset.v; state.bankCat = ""; render(); break;
+    case "bankcat": state.bankCat = state.bankCat === el.dataset.v ? "" : el.dataset.v; render(); break;
+    case "bankclear": state.bankMonth = null; state.bankCat = ""; render(); break;
+    case "banktx": openTxCat(id, el.dataset.m); break;
     case "quickInv": quickInvoice(); break;
     case "pdfpick": $("#pdfInput").click(); break;
     case "photopick": imgPurpose = "invoice"; $("#imgInput").click(); break;
