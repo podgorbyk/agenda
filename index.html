@@ -215,6 +215,9 @@ dialog{overflow-x:hidden;max-width:min(560px,100vw)}
 .login .card{padding:24px 20px;width:100%;max-width:380px;display:grid;gap:12px}
 .login h2{margin:0;font-size:24px}
 .err{color:var(--danger);font-size:14px;min-height:1em}
+.toast[popover],.busy[popover]{margin:0;border:0;overflow:visible}
+.busy[popover]{inset:0;width:auto;height:auto;padding:0}
+.toast[popover]{inset:auto;right:auto;top:auto}
 .toast{position:fixed;left:50%;transform:translateX(-50%);bottom:calc(150px + env(safe-area-inset-bottom));background:var(--ink);color:var(--bg);padding:10px 16px;border-radius:12px;font-size:14px;z-index:100;max-width:90vw}
 
 /* =============== THÈME 2.1 — rose poudré / prune, Helvetica =============== */
@@ -433,7 +436,7 @@ const DEFAULT_SETTINGS = {
 };
 
 /* ---------- espaces : chaque foyer a son agenda privé, seule la catégorie partagée est commune ---------- */
-const APP_VERSION = "3.0 — 11 nov. 2026";
+const APP_VERSION = "3.0.1 — 12 nov. 2026";
 const SHARED_CAT = "Sombreffe";
 const FIN_CAT = "Finance", FIN_COLOR = "#16a34a";
 const FIN_CATS = ["Courses", "Énergie", "Eau", "Assurance", "Télécom & internet", "Impôts & taxes", "Voiture", "École & enfants", "Santé", "Maison", "Banque & crédit", "Abonnements", "Autre"];
@@ -481,9 +484,10 @@ const ls = {
   get(k, d) { try { const v = localStorage.getItem(k); return v == null ? d : JSON.parse(v); } catch { return d; } },
   set(k, v) { try { localStorage.setItem(k, JSON.stringify(v)); } catch {} }
 };
+function onTop(el) { try { el.setAttribute("popover", "manual"); el.showPopover(); } catch {} }
 function toast(msg, ms = 2600) {
   const t = document.createElement("div"); t.className = "toast"; t.textContent = msg;
-  document.body.appendChild(t); setTimeout(() => t.remove(), ms);
+  document.body.appendChild(t); onTop(t); setTimeout(() => t.remove(), ms);
 }
 
 /* ---------- état ---------- */
@@ -1373,6 +1377,8 @@ $("#finPhoto").onclick = () => { imgPurpose = "invoice"; $("#imgInput").click();
 $("#imgInput").addEventListener("change", async e => {
   const f = e.target.files[0]; e.target.value = ""; if (!f) return;
   if (!aiOn()) return toast("La lecture par l'IA est réservée au foyer Kevin & Emeline.");
+  if (finEd.open) finEd.close();
+  if (tkEd.open) tkEd.close();
   if (imgPurpose === "receipt") return scanReceipt(f);
   let b64; try { b64 = await imageToJpegs(f); } catch (err) { return toast("Photo illisible : " + err.message, 5000); }
   aiInvoiceFromImage(b64, "Lu depuis une photo");
@@ -1407,7 +1413,7 @@ function demoAi(kind) {
 }
 function busy(on, txt = "Lecture par l'IA…") {
   let el = $("#busy");
-  if (on) { if (!el) { el = document.createElement("div"); el.id = "busy"; el.className = "busy"; document.body.appendChild(el); } el.innerHTML = `<div><i></i>${esc(txt)}</div>`; }
+  if (on) { if (!el) { el = document.createElement("div"); el.id = "busy"; el.className = "busy"; document.body.appendChild(el); onTop(el); } el.innerHTML = `<div><i></i>${esc(txt)}</div>`; }
   else if (el) el.remove();
 }
 /* Photo → morceaux JPEG lisibles par l'IA. Un long ticket est découpé en tranches (avec chevauchement)
