@@ -150,6 +150,7 @@ textarea{min-height:70px;resize:vertical}
 #finForm[data-kind=bill] .f-inv{display:none}
 #finForm.nodue .f-due{display:none}
 #finForm.nocustom .f-custom{display:none}
+#finForm.linked .f-recur{display:none}
 #finHint{background:color-mix(in srgb,#16a34a 10%,var(--card));border:1px solid color-mix(in srgb,#16a34a 35%,transparent);border-radius:12px;padding:8px 10px;color:var(--ink);line-height:1.45}
 .ticket .row{padding:8px 10px;gap:8px;align-items:center}
 #tkForm,#finForm,#edForm{grid-template-columns:minmax(0,1fr)}
@@ -392,6 +393,7 @@ nav.tabs button.plus span{width:62px;height:62px;border-radius:50%;display:grid;
       <label class="f-inv">Statut<select name="paid"><option value="1">Payée</option><option value="0">À payer</option></select></label>
       <label class="f-inv f-due">Échéance<input type="date" name="due"></label>
       <label class="f-inv">Rattacher à<select name="billId"></select></label>
+      <label class="f-inv f-recur">Revient (prévision)<select name="recur"><option value="">Non, ponctuelle</option><option value="1">Chaque mois</option><option value="2">Tous les 2 mois</option><option value="3">Tous les 3 mois</option><option value="6">Tous les 6 mois</option><option value="12">Chaque année</option></select></label>
       <label class="f-bill">Revient tous les<select name="months"><option value="1">Mois</option><option value="2">2 mois</option><option value="3">3 mois</option><option value="6">6 mois</option><option value="12">An</option><option value="custom">Autre…</option></select></label>
       <label class="f-bill f-custom">Nombre de mois<input type="number" name="customMonths" min="1" max="60" value="4"></label>
       <label class="f-bill">Prochaine échéance<input type="date" name="next"></label>
@@ -436,7 +438,7 @@ const DEFAULT_SETTINGS = {
 };
 
 /* ---------- espaces : chaque foyer a son agenda privé, seule la catégorie partagée est commune ---------- */
-const APP_VERSION = "3.0.2 — 12 nov. 2026";
+const APP_VERSION = "3.1 — 12 nov. 2026";
 const SHARED_CAT = "Sombreffe";
 const FIN_CAT = "Finance", FIN_COLOR = "#16a34a";
 const FIN_CATS = ["Courses", "Énergie", "Eau", "Assurance", "Télécom & internet", "Impôts & taxes", "Voiture", "École & enfants", "Santé", "Maison", "Banque & crédit", "Abonnements", "Autre"];
@@ -855,12 +857,13 @@ function rowHTML(i, opts = {}) {
   const p = sh ? { name: i.whoLabel || "—", color: SHARED_COLOR } : P(i.person), today = todayStr();
   const isDone = isItemDone(i, opts.occ);
   const late = i.type === "task" && !isDone && i.date && i.date < today;
-  const check = i.type === "bill" ? `<span class="check bill" aria-hidden="true">💶</span>` :
+  const check = i.invId ? `<button class="check" data-act="invpaid" data-id="${i.invId}" aria-label="Marquer payée" title="Marquer payée"></button>`
+    : i.type === "bill" ? `<span class="check bill" aria-hidden="true">💶</span>` :
     `<button class="check st-${isDone ? "done" : (i.status || "todo")}" data-act="toggle" data-id="${i.id}"${opts.occ ? ` data-d="${opts.occ}"` : ""} aria-label="Cocher">${isDone ? "✓" : ""}</button>`;
   const time = opts.time ? `<div class="time">${i.time ? esc(i.time) + (i.endTime ? `<br>${esc(i.endTime)}` : "") : "Journée"}</div>` : "";
   const prio = i.type === "task" && +i.priority > 0 && i.status !== "done" ? `<span class="prio p${+i.priority}">${+i.priority === 2 ? "URGENT" : "!"}</span>` : "";
   const meta = [];
-  if (i.type === "bill") meta.push(`<span><b>${esc(eur(i.amount))}</b>${i.supplier ? " · " + esc(i.supplier) : ""}</span>`);
+  if (i.type === "bill") meta.push(`<span><b>${esc(eur(i.amount))}</b>${i.supplier ? " · " + esc(i.supplier) : ""}${i.invId ? ` · <span style="color:var(--warn);font-weight:600">à payer</span>` : ""}</span>`);
   else if (i.type !== "shop") meta.push(`<span class="who" style="--c:${esc(p.color)}">${esc(p.name)}</span>`);
   if (i.category && !opts.noCat) meta.push(`<span class="tag${i.category === SHARED_CAT ? " shared" : ""}">${i.category === SHARED_CAT ? "🏡 " : ""}${esc(i.category)}</span>`);
   if (i.qty) meta.push(`<span>${esc(i.qty)}</span>`);
@@ -872,7 +875,7 @@ function rowHTML(i, opts = {}) {
   if (i.notes) meta.push(`<span title="Notes">📝</span>`);
   return `<div class="row ${isDone ? "done" : ""} ${opts.conf ? "isconf" : ""}" style="--c:${i.type === "shop" ? "transparent" : i.type === "bill" ? FIN_COLOR : esc(p.color)}">
     ${time}${check}
-    <div class="body" data-act="${i.type === "bill" ? "editbill" : "edit"}" data-id="${i.type === "bill" ? i.billId : i.id}"${opts.occ ? ` data-d="${opts.occ}"` : ""}>
+    <div class="body" data-act="${finAct(i)}" data-id="${finId(i)}"${opts.occ ? ` data-d="${opts.occ}"` : ""}>
       <div class="title">${prio}${esc(i.title)}</div>
       ${meta.length ? `<div class="meta">${meta.join("")}</div>` : ""}
     </div></div>`;
@@ -994,7 +997,7 @@ const itemColor = i => i.type === "bill" ? FIN_COLOR : i._col === "shared" ? SHA
 const itemIcon = i => i.type === "bill" ? "💶" : i._col === "shared" ? "🏡" : (CAT_ICON[i.category] || (i.type === "task" ? "✅" : "•"));
 const CAL_SVG = `<svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.8" stroke-linecap="round"><rect x="3" y="5" width="18" height="16" rx="3"/><path d="M3 10h18M8 3v4M16 3v4"/></svg>`;
 function recapList(list, withDate) {
-  return list.map(({ i, ds }) => `<div class="rl ${isItemDone(i, ds) ? "done" : ""}" data-act="${i.type === "bill" ? "editbill" : "edit"}" data-id="${i.type === "bill" ? i.billId : i.id}" data-d="${ds}">
+  return list.map(({ i, ds }) => `<div class="rl ${isItemDone(i, ds) ? "done" : ""}" data-act="${finAct(i)}" data-id="${finId(i)}" data-d="${ds}">
     <span class="ic">${itemIcon(i)}</span><span class="t">${esc(i.title)}</span>
     <span class="d">${withDate ? esc(fmtDay(ds, { weekday: "short", day: "numeric", month: "short" })) : (i.time ? esc(i.time) + (i.endTime ? "–" + esc(i.endTime) : "") : i.type === "bill" ? esc(eur(i.amount)) : "Journée")}</span></div>`).join("");
 }
@@ -1036,6 +1039,7 @@ function renderAgenda() {
     .map(([n, c]) => `<span><i style="--c:${esc(c)}"></i>${esc(n)}</span>`).join("");
   // Aujourd'hui
   const t = todayStr(), todayL = dayItems(t).evs.map(i => ({ i, ds: t }));
+  if (financeOn()) invoices().filter(i => !i.paid && i.due && i.due < t).forEach(i => todayL.push({ i: { id: `inv_${i.id}`, invId: i.id, type: "bill", title: `⚠ ${i.supplier || "Facture"} — en retard`, amount: i.amount, category: FIN_CAT, person: "both" }, ds: i.due }));
   const tasksToday = state.items.filter(i => i.type === "task" && i.status !== "done" && i.date && i.date <= t && !(ag.withTasks && i.date === t)).map(i => ({ i, ds: i.date }));
   // Ce mois-ci : temps forts
   const hl = [];
@@ -1136,11 +1140,17 @@ function billOccurrences(b, fromDs, toDs) {
 }
 function billsOn(ds) {
   if (!financeOn()) return [];
-  return bills().filter(b => billOccurrences(b, ds, ds).length).map(b => ({
+  const dues = invoices().filter(i => !i.paid && i.due === ds).map(i => ({
+    id: `inv_${i.id}`, invId: i.id, type: "bill", title: i.supplier || "Facture", amount: i.amount, supplier: "",
+    date: ds, time: "", category: FIN_CAT, person: "both", status: "todo", due: true
+  }));
+  return dues.concat(bills().filter(b => billOccurrences(b, ds, ds).length).map(b => ({
     id: `bill_${b.id}_${ds}`, billId: b.id, type: "bill", title: b.label || b.supplier, amount: b.amount, supplier: b.label ? b.supplier : "",
     date: ds, time: "", category: FIN_CAT, person: "both", status: b.next < todayStr() && ds === b.next ? "todo" : ""
-  }));
+  })));
 }
+const finAct = i => i.invId ? "editinv" : i.type === "bill" ? "editbill" : "edit";
+const finId = i => i.invId || (i.type === "bill" ? i.billId : i.id);
 function guessFinCat(sup) {
   const t = normSup(sup);
   const map = [[/delhaize|colruyt|aldi|lidl|carrefour|spar|intermarche|okay|cora|match|albert heijn|jumbo|proxy|bio-planet|boucherie|boulangerie/, "Courses"], [/engie|luminus|totalenergies|mega|eneco|electr|gaz|mazout|pellet/, "Énergie"], [/swde|vivaqua|eau|inbw|cile/, "Eau"],
@@ -1472,12 +1482,12 @@ async function aiInvoiceFromImage(b64, label) {
   const bill = bills().find(b => normSup(b.supplier || b.label) && normSup(r.supplier).includes(normSup(b.supplier || b.label)));
   const note = [r.summary, r.number && `Facture n° ${r.number}`, r.communication && `Communication : ${r.communication}`, r.iban && `IBAN : ${r.iban}`, r.domiciliation && "Payée par domiciliation", label].filter(Boolean).join("\n");
   if (finEd.open) finEd.close();
-  openInvoice(null, { supplier: r.supplier, amount: r.amount || "", date: r.date || today, paid: !unpaid, due: unpaid ? r.due : "", note, billId: bill ? bill.id : "", category: r.category || guessFinCat(r.supplier) });
   const months = { monthly: 1, bimonthly: 2, quarterly: 3, semiannual: 6, yearly: 12 }[r.recurring];
+  openInvoice(null, { supplier: r.supplier, amount: r.amount || "", date: r.date || today, paid: !unpaid, due: unpaid ? r.due : "", note, billId: bill ? bill.id : "", category: r.category || guessFinCat(r.supplier), recur: bill ? "" : (months || "") });
   const hint = $("#finHint"); hint.hidden = false; hint.classList.toggle("warn", r.confidence === "basse");
   hint.innerHTML = `🤖 Lu par l'IA (fiabilité ${esc(r.confidence)}). Vérifie puis appuie sur <b>Enregistrer</b>.` + (bill ? `<br>Rattachée à « ${esc(bill.label || bill.supplier)} ».` : "")
-    + (!bill && months ? `<br>Cette facture semble revenir ${esc(monthsLabel(months))}. <a href="#" id="mkBill">Créer la charge « à venir »</a>` : "");
-  const mk = $("#mkBill"); if (mk) mk.onclick = e => { e.preventDefault(); finEd.close(); openBill(null, { label: r.supplier, supplier: r.supplier, amount: r.amount, months, next: addMonthsStr(r.due || r.date || today, months), category: r.category }); };
+    + (!bill && months ? `<br>↻ Elle semble revenir <b>${esc(monthsLabel(months))}</b> : « Revient » est pré-réglé (mets « Non » si ce n'est pas le cas).` : "")
+    + (unpaid ? `<br>📅 À payer le ${esc(fmtDay(r.due))} : elle apparaîtra dans l'agenda avec rappels.` : "");
 }
 
 /* --- tickets de caisse --- */
@@ -1627,6 +1637,7 @@ const finEd = $("#finEd"), finForm = $("#finForm");
 let finEditing = null;
 function fillFinCats(cur) { const opts = [...FIN_CATS]; if (cur && !opts.includes(cur)) opts.push(cur); finForm.fcat.innerHTML = opts.map(c => `<option ${c === cur ? "selected" : ""}>${esc(c)}</option>`).join(""); }
 function syncFinForm() {
+  finForm.classList.toggle("linked", !!finForm.billId.value);
   finForm.classList.toggle("nodue", finForm.paid.value === "1");
   finForm.classList.toggle("nocustom", finForm.months.value !== "custom");
 }
@@ -1639,6 +1650,7 @@ function openInvoice(inv, preset = {}) {
   finForm.date.value = o.date || todayStr(); finForm.paid.value = o.paid === false ? "0" : "1"; finForm.due.value = o.due || ""; finForm.fnote.value = o.note || "";
   fillFinCats(o.category || guessFinCat(o.supplier));
   finForm.billId.innerHTML = `<option value="">— aucune —</option>` + bills().map(b => `<option value="${b.id}" ${b.id === o.billId ? "selected" : ""}>${esc(b.label || b.supplier)}</option>`).join("");
+  finForm.recur.value = o.recur ? String(o.recur) : "";
   $("#finDel").hidden = !inv; syncFinForm(); finEd.showModal();
 }
 function openBill(b, preset = {}) {
@@ -1653,7 +1665,7 @@ function openBill(b, preset = {}) {
   fillFinCats(o.category || guessFinCat(o.supplier || o.label));
   $("#finDel").hidden = !b; syncFinForm(); finEd.showModal();
 }
-finForm.paid.onchange = syncFinForm; finForm.months.onchange = syncFinForm;
+finForm.paid.onchange = syncFinForm; finForm.billId.onchange = syncFinForm; finForm.months.onchange = syncFinForm;
 finForm.supplier.addEventListener("change", () => { if (!finEditing) fillFinCats(guessFinCat(finForm.supplier.value || finForm.label.value)); });
 $("#finClose").onclick = () => finEd.close();
 finEd.addEventListener("click", e => { if (e.target === finEd) finEd.close(); });
@@ -1674,9 +1686,18 @@ finForm.onsubmit = async e => {
         paid: finForm.paid.value === "1", due: finForm.paid.value === "1" ? "" : finForm.due.value, note: finForm.fnote.value.trim(), billId: finForm.billId.value };
       if (!o.supplier && !amount) return;
       const was = finEditing ? state.fin.find(x => x.id === finEditing) : null;
+      const recur = !o.billId && +finForm.recur.value;
       finEd.close();
+      let newBill = "";
+      if (recur) {   // crée la charge « à venir » : la prochaine occurrence après celle-ci
+        const base = o.due || o.date || todayStr();
+        newBill = await store.finAdd({ kind: "bill", label: o.supplier || "Charge", supplier: o.supplier, amount, months: recur, next: addMonthsStr(base, recur), category: o.category, note: "", active: true });
+        o.billId = newBill;
+      }
       if (finEditing) await store.finUpdate(finEditing, o); else { const id = await store.finAdd(o); o.id = id; }
-      if (o.billId && (!was || was.billId !== o.billId)) await afterInvoiceLinked(o.billId, { ...o, id: o.id || finEditing });
+      if (newBill) toast(`↻ « ${o.supplier} » ajoutée aux charges à venir : prochaine le ${fmtDay(addMonthsStr(o.due || o.date || todayStr(), recur))}`, 5000);
+      else if (o.billId && (!was || was.billId !== o.billId)) await afterInvoiceLinked(o.billId, { ...o, id: o.id || finEditing });
+      if (!o.paid && o.due && !was) toast(`📅 Ajoutée à l'agenda le ${fmtDay(o.due)} avec rappels de paiement`, 4500);
       const odd = unusual({ ...o, id: o.id || finEditing }); if (odd) toast(`⚠ ${o.supplier} : ${odd} % plus cher que d'habitude`, 5000);
     } else {
       const months = finForm.months.value === "custom" ? Math.max(1, +finForm.customMonths.value || 1) : +finForm.months.value;
@@ -1841,6 +1862,7 @@ main.addEventListener("click", e => {
     case "shoptab": state.shopTab = el.dataset.v; render(); break;
     case "openrec": { const r = state.fin.find(x => x.id === id); if (r) openReceipt(r); break; }
     case "editinv": openInvoice(state.fin.find(x => x.id === id)); break;
+    case "invpaid": { const inv = state.fin.find(x => x.id === id); if (inv) store.finUpdate(id, { paid: true, due: "", paidAt: todayStr() }).then(() => toast(`✓ ${inv.supplier || "Facture"} marquée payée`)).catch(fail); break; }
     case "editbill": { const b = state.fin.find(x => x.id === id); if (b) openBill(b); break; }
     case "newbill": openBill(null); break;
     case "billpaid": { const b = state.fin.find(x => x.id === id); if (b) openInvoice(null, { supplier: b.supplier || b.label, amount: b.amount, category: b.category, billId: b.id }); break; }
