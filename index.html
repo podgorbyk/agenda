@@ -151,6 +151,8 @@ textarea{min-height:70px;resize:vertical}
 #finForm.nodue .f-due{display:none}
 #finForm.nocustom .f-custom{display:none}
 #finForm.linked .f-recur{display:none}
+#finForm:not(.linked) .f-linkinfo{display:none}
+.f-linkinfo{background:color-mix(in srgb,#16a34a 10%,var(--card));border-radius:10px;padding:7px 10px;color:var(--ink)}
 #finHint{background:color-mix(in srgb,#16a34a 10%,var(--card));border:1px solid color-mix(in srgb,#16a34a 35%,transparent);border-radius:12px;padding:8px 10px;color:var(--ink);line-height:1.45}
 .ticket .row{padding:8px 10px;gap:8px;align-items:center}
 #tkForm,#finForm,#edForm{grid-template-columns:minmax(0,1fr)}
@@ -393,6 +395,7 @@ nav.tabs button.plus span{width:62px;height:62px;border-radius:50%;display:grid;
       <label class="f-inv">Statut<select name="paid"><option value="1">Payée</option><option value="0">À payer</option></select></label>
       <label class="f-inv f-due">Échéance<input type="date" name="due"></label>
       <label class="f-inv">Rattacher à<select name="billId"></select></label>
+      <div class="f-inv f-linkinfo small" id="linkInfo" style="grid-column:1/-1"></div>
       <label class="f-inv f-recur">Revient (prévision)<select name="recur"><option value="">Non, ponctuelle</option><option value="1">Chaque mois</option><option value="2">Tous les 2 mois</option><option value="3">Tous les 3 mois</option><option value="6">Tous les 6 mois</option><option value="12">Chaque année</option></select></label>
       <label class="f-bill">Revient tous les<select name="months"><option value="1">Mois</option><option value="2">2 mois</option><option value="3">3 mois</option><option value="6">6 mois</option><option value="12">An</option><option value="custom">Autre…</option></select></label>
       <label class="f-bill f-custom">Nombre de mois<input type="number" name="customMonths" min="1" max="60" value="4"></label>
@@ -438,7 +441,7 @@ const DEFAULT_SETTINGS = {
 };
 
 /* ---------- espaces : chaque foyer a son agenda privé, seule la catégorie partagée est commune ---------- */
-const APP_VERSION = "3.1 — 12 nov. 2026";
+const APP_VERSION = "3.1.1 — 12 nov. 2026";
 const SHARED_CAT = "Sombreffe";
 const FIN_CAT = "Finance", FIN_COLOR = "#16a34a";
 const FIN_CATS = ["Courses", "Énergie", "Eau", "Assurance", "Télécom & internet", "Impôts & taxes", "Voiture", "École & enfants", "Santé", "Maison", "Banque & crédit", "Abonnements", "Autre"];
@@ -1634,10 +1637,13 @@ function renderShopAnalysis() {
 
 /* --- éditeur Finance --- */
 const finEd = $("#finEd"), finForm = $("#finForm");
-let finEditing = null;
+let finEditing = null, payingOcc = null;
 function fillFinCats(cur) { const opts = [...FIN_CATS]; if (cur && !opts.includes(cur)) opts.push(cur); finForm.fcat.innerHTML = opts.map(c => `<option ${c === cur ? "selected" : ""}>${esc(c)}</option>`).join(""); }
 function syncFinForm() {
   finForm.classList.toggle("linked", !!finForm.billId.value);
+  const lb = state.fin.find(x => x.id === finForm.billId.value);
+  $("#linkInfo").innerHTML = lb ? `↻ Récurrence gérée par la charge « ${esc(lb.label || lb.supplier)} » : ${esc(monthsLabel(lb.months))}, prochaine le ${esc(fmtDay(lb.next, { day: "numeric", month: "long", year: "numeric" }))} · <a href="#" id="editLinked">Modifier</a>` : "";
+  const el = $("#editLinked"); if (el) el.onclick = ev => { ev.preventDefault(); finEd.close(); openBill(lb); };
   finForm.classList.toggle("nodue", finForm.paid.value === "1");
   finForm.classList.toggle("nocustom", finForm.months.value !== "custom");
 }
@@ -1669,11 +1675,17 @@ finForm.paid.onchange = syncFinForm; finForm.billId.onchange = syncFinForm; finF
 finForm.supplier.addEventListener("change", () => { if (!finEditing) fillFinCats(guessFinCat(finForm.supplier.value || finForm.label.value)); });
 $("#finClose").onclick = () => finEd.close();
 finEd.addEventListener("click", e => { if (e.target === finEd) finEd.close(); });
-async function afterInvoiceLinked(billId, inv) {
+function nextAfter(b, ref) {
+  const m = b.months || 12; let n = b.next || addMonthsStr(ref, m), g = 0;
+  while (addMonthsStr(n, -m) > ref && g++ < 200) n = addMonthsStr(n, -m);
+  while (n <= ref && g++ < 400) n = addMonthsStr(n, m);
+  return n;
+}
+async function afterInvoiceLinked(billId, inv, occ) {
   const b = state.fin.find(x => x.id === billId); if (!b) return;
   const linked = invoices().filter(i => i.billId === billId && i.id !== inv.id).concat([inv]).sort((a, c) => (a.date || "").localeCompare(c.date || "")).slice(-3);
   const est = Math.round(linked.reduce((s, i) => s + (+i.amount || 0), 0) / linked.length * 100) / 100;
-  const next = b.next ? addMonthsStr(b.next, b.months || 12) : addMonthsStr(inv.date, b.months || 12);
+  const next = nextAfter(b, occ || inv.due || inv.date || todayStr());
   await store.finUpdate(billId, { next, amount: est });
   toast(`« ${b.label || b.supplier} » : prochaine échéance le ${fmtDay(next)} (~${eur(est)})`, 4000);
 }
@@ -1696,7 +1708,8 @@ finForm.onsubmit = async e => {
       }
       if (finEditing) await store.finUpdate(finEditing, o); else { const id = await store.finAdd(o); o.id = id; }
       if (newBill) toast(`↻ « ${o.supplier} » ajoutée aux charges à venir : prochaine le ${fmtDay(addMonthsStr(o.due || o.date || todayStr(), recur))}`, 5000);
-      else if (o.billId && (!was || was.billId !== o.billId)) await afterInvoiceLinked(o.billId, { ...o, id: o.id || finEditing });
+      else if (o.billId && (!was || was.billId !== o.billId)) await afterInvoiceLinked(o.billId, { ...o, id: o.id || finEditing }, payingOcc && payingOcc.bill === o.billId ? payingOcc.occ : null);
+      payingOcc = null;
       if (!o.paid && o.due && !was) toast(`📅 Ajoutée à l'agenda le ${fmtDay(o.due)} avec rappels de paiement`, 4500);
       const odd = unusual({ ...o, id: o.id || finEditing }); if (odd) toast(`⚠ ${o.supplier} : ${odd} % plus cher que d'habitude`, 5000);
     } else {
@@ -1709,7 +1722,15 @@ finForm.onsubmit = async e => {
     }
   } catch (err) { fail(err); }
 };
-$("#finDel").onclick = () => { if (finEditing && confirm("Supprimer ?")) { store.finRemove(finEditing).catch(fail); finEd.close(); } };
+$("#finDel").onclick = async () => {
+  if (!finEditing || !confirm("Supprimer ?")) return;
+  const it = state.fin.find(x => x.id === finEditing), id = finEditing; finEd.close();
+  try {
+    await store.finRemove(id);
+    const b = it && it.kind === "invoice" && it.billId && state.fin.find(x => x.id === it.billId);
+    if (b && !invoices().some(i => i.billId === b.id && i.id !== id) && confirm(`Supprimer aussi la charge récurrente « ${b.label || b.supplier} » (${monthsLabel(b.months)}) ?`)) await store.finRemove(b.id);
+  } catch (e) { fail(e); }
+};
 function quickInvoice() {
   const inp = $("#quickInv"), t = inp.value.trim(); if (!t) return;
   const m = t.match(/^(.*?)[\s:]*(\d+(?:[ .]\d{3})*(?:[.,]\d{1,2})?)\s*€?\s*$/);
@@ -1865,7 +1886,7 @@ main.addEventListener("click", e => {
     case "invpaid": { const inv = state.fin.find(x => x.id === id); if (inv) store.finUpdate(id, { paid: true, due: "", paidAt: todayStr() }).then(() => toast(`✓ ${inv.supplier || "Facture"} marquée payée`)).catch(fail); break; }
     case "editbill": { const b = state.fin.find(x => x.id === id); if (b) openBill(b); break; }
     case "newbill": openBill(null); break;
-    case "billpaid": { const b = state.fin.find(x => x.id === id); if (b) openInvoice(null, { supplier: b.supplier || b.label, amount: b.amount, category: b.category, billId: b.id }); break; }
+    case "billpaid": { const b = state.fin.find(x => x.id === id); if (b) { openInvoice(null, { supplier: b.supplier || b.label, amount: b.amount, category: b.category, billId: b.id }); payingOcc = { bill: b.id, occ: b.next }; } break; }
     case "sugok": { const g = suggestions().find(x => x.key === el.dataset.k); if (g) openBill(null, { label: g.supplier, supplier: g.supplier, amount: g.amount, months: g.months, next: g.next, category: g.category }); break; }
     case "sugno": { const d = ls.get("na.sugDismiss", []); d.push(el.dataset.k); ls.set("na.sugDismiss", d); render(); break; }
     case "agfilters": ag.showFilters = !ag.showFilters; render(); break;
