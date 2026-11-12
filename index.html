@@ -2,6 +2,7 @@
 <html lang="fr">
 <head>
 <meta charset="utf-8">
+<meta name="app-version" content="3.5 — 13 nov. 2026">
 <meta name="viewport" content="width=device-width, initial-scale=1, viewport-fit=cover">
 <title>Notre Agenda</title>
 <meta name="theme-color" content="#f7e9e6">
@@ -388,6 +389,9 @@ html.wall .seg button.on{background:rgba(255,255,255,.14)}
 html.wall .catck label,html.wall .chip{background:rgba(40,24,30,.86)}
 html.wall select,html.wall input[type=text],html.wall input[type=search],html.wall input[type=email],html.wall input[type=password],html.wall input[type=date],html.wall input[type=time],html.wall input[type=number],html.wall textarea{background:rgba(40,24,30,.9)}
 html.wall dialog select,html.wall dialog input,html.wall dialog textarea{background:#33222a}
+
+/* 3.5 — ouverture instantanée : aperçu du dernier écran pendant le chargement */
+body.booting #main,body.booting nav.tabs,body.booting #hdrSettings{pointer-events:none}
 </style>
 </head>
 <body>
@@ -569,7 +573,7 @@ const DEFAULT_SETTINGS = {
 };
 
 /* ---------- espaces : chaque foyer a son agenda privé, seule la catégorie partagée est commune ---------- */
-const APP_VERSION = "3.4 — 12 nov. 2026";
+const APP_VERSION = "3.5 — 13 nov. 2026";
 const SHARED_CAT = "Sombreffe";
 const FIN_CAT = "Finance", FIN_COLOR = "#16a34a";
 const FIN_CATS = ["Courses", "Énergie", "Eau", "Assurance", "Télécom & internet", "Impôts & taxes", "Voiture", "École & enfants", "Santé", "Maison", "Banque & crédit", "Abonnements", "Autre"];
@@ -782,6 +786,13 @@ addEventListener("online", paintSync); addEventListener("offline", paintSync);
 let fbRef = null;
 async function boot() {
   paintSync();
+  const snap = !DEMO && state.view === "home" && ls.get("na.snap", null);
+  if (snap && snap.v === APP_VERSION && snap.html) {
+    document.body.classList.add("booting");
+    $("#main").innerHTML = snap.html; $("#hTitle").textContent = snap.title || "Notre Agenda";
+    $("#tabs").hidden = false; $("#tabFinance").hidden = snap.space !== "famille"; $("#tabSettings").hidden = snap.space === "famille";
+    document.querySelectorAll("#tabs button").forEach(b => b.classList.toggle("on", b.dataset.view === "home"));
+  }
   if (DEMO) { store = createLocalStore(); startApp(); return; }
   try { fbRef = await loadFirebase(); }
   catch (e) { $("#main").innerHTML = `<div class="empty">Impossible de charger Firebase. Vérifie ta connexion.<br><small>${esc(e.message)}</small></div>`; return; }
@@ -799,20 +810,22 @@ function startApp() {
   const onErr = e => {
     if (e?.code === "permission-denied") renderDenied(); else fail(e);
   };
-  unsub.push(store.onSettings(s => { state.settings = s; if (state.view !== "settings") render(); }, onErr));
+  unsub.push(store.onSettings(s => { state.settings = s; scheduleRender(); }, onErr));
   let cleaned = false;
   unsub.push(store.onItems(items => {
     state.items = items;
     if (!cleaned && items.length) { cleaned = true; setTimeout(purgeOldDone, 3000); }
-    if (state.view !== "settings") render();
+    scheduleRender();
   }, onErr));
   $("#tabFinance").hidden = !financeOn();
   $("#tabSettings").hidden = financeOn();
   if (!DEMO && store.space === "famille") unsub.push(fbRef.f.onSnapshot(fbRef.f.doc(fbRef.db, "meta", "aiUsage"), d => { state.aiUsage = d.exists() ? d.data() : null; }, () => {}));
-  if (financeOn() && store.onFinance) unsub.push(store.onFinance(list => { state.fin = list; if (state.view !== "settings") render(); }, e => console.warn("finance", e)));
+  if (financeOn() && store.onFinance) unsub.push(store.onFinance(list => { state.fin = list; scheduleRender(); }, e => console.warn("finance", e)));
   render(); paintSync();
-  if (store.mode === "cloud") { watchDevice(); refreshToken(); }
+  if (store.mode === "cloud") { watchDevice(); setTimeout(refreshToken, 4000); setTimeout(registerShell, 2500); }
 }
+/* service worker : garde l'appli et Firebase en cache sur le téléphone → ouverture instantanée */
+function registerShell() { try { if ("serviceWorker" in navigator) navigator.serviceWorker.register("firebase-messaging-sw.js").catch(() => {}); } catch {} }
 
 /* ---------- notifications (Firebase Cloud Messaging) ---------- */
 const NOTIF_DEFAULTS = { finRemind: true, remind: true, leads: [60], allDay: "veille20", persons: [], categories: [], onAdd: true, onEdit: false, onDone: false, types: ["event", "task", "shop"], quiet: true };
@@ -904,6 +917,7 @@ function notifSection() {
 
 /* ---------- connexion (email + mot de passe) ---------- */
 function renderLogin() {
+  document.body.classList.remove("booting");
   $("#tabs").hidden = true; $("#fab").hidden = true; $("#hdrSettings").hidden = true; paintSync();
   $("#main").innerHTML = `
   <div class="login"><form class="card" id="loginForm">
@@ -937,6 +951,7 @@ function renderLogin() {
   };
 }
 function renderDenied() {
+  document.body.classList.remove("booting");
   $("#tabs").hidden = true; $("#fab").hidden = true; $("#hdrSettings").hidden = true;
   $("#main").innerHTML = `<div class="login"><div class="card"><h2>Accès refusé</h2>
     <div class="small">Le compte <b>${esc(state.user?.email)}</b> n'est pas dans la liste autorisée des règles Firestore.</div>
@@ -968,7 +983,15 @@ function catSelect() {
 }
 
 /* ---------- rendu ---------- */
+let renderQueued = false;
+function scheduleRender() { if (renderQueued) return; renderQueued = true; requestAnimationFrame(() => { renderQueued = false; if (state.view !== "settings") render(); }); }
+let snapTimer = null;
+function saveSnapshot() {   // garde une image de l'accueil pour l'afficher instantanément à la prochaine ouverture
+  clearTimeout(snapTimer);
+  snapTimer = setTimeout(() => { if (DEMO || !store || state.view !== "home") return; ls.set("na.snap", { v: APP_VERSION, space: store.space, html: $("#main").innerHTML, title: $("#hTitle").textContent }); }, 1500);
+}
 function render() {
+  document.body.classList.remove("booting");
   const act = document.activeElement, keepId = act?.id, pos = act?.selectionStart;
   document.querySelectorAll("#tabs button").forEach(b => b.classList.toggle("on", b.dataset.view === state.view));
   $("#hdrSettings").classList.toggle("on", state.view === "settings");
@@ -979,6 +1002,7 @@ function render() {
   if (state.view === "finance" && !financeOn()) state.view = "tasks";
   const v = { home: renderHome, tasks: renderTasks, agenda: renderAgenda, shop: renderShop, finance: renderFinance, settings: renderSettings }[state.view] || renderTasks;
   $("#main").innerHTML = banner + v();
+  if (state.view === "home") saveSnapshot();
   if (keepId && document.getElementById(keepId)) {
     const el = document.getElementById(keepId); el.focus();
     try { if (pos != null) el.setSelectionRange(pos, pos); } catch {}
@@ -2518,7 +2542,7 @@ main.addEventListener("click", e => {
     case "agtoday": ag.anchor = new Date(); ag.sel = todayStr(); ag.open = ag.mode === "month" ? todayStr() : null; render(); break;
     case "agsel": ag.sel = el.dataset.d; ag.open = ag.open === el.dataset.d ? null : el.dataset.d; render(); break;
     case "addOn": openEditor(null, { type: "event", date: el.dataset.d }); break;
-    case "logout": if (devUnsub) { devUnsub(); devUnsub = null; } fbRef.a.signOut(fbRef.auth); break;
+    case "logout": ls.set("na.snap", null); if (devUnsub) { devUnsub(); devUnsub = null; } fbRef.a.signOut(fbRef.auth); break;
     case "notifOn": enableNotifs(); break;
     case "notifOff": if (confirm("Désactiver les notifications sur cet appareil ?")) disableNotifs(); break;
     case "notifTest": sendTest(); break;
@@ -2590,11 +2614,13 @@ main.addEventListener("keydown", e => {
 
 /* ---------- nouvelle version disponible ? ---------- */
 let updShown = false;
+let lastCheck = 0;
 async function checkUpdate() {
   if (updShown || DEMO || !navigator.onLine) return;
   try {
-    const txt = await (await fetch(location.pathname + "?v=" + Date.now(), { cache: "no-store" })).text();
-    const m = txt.match(/const APP_VERSION = "([^"]+)"/);
+    if (Date.now() - lastCheck < 5 * 60 * 1000) return; lastCheck = Date.now();
+    const txt = await (await fetch(location.pathname + "?v=" + Date.now(), { cache: "no-store", headers: { Range: "bytes=0-1023" } })).text();
+    const m = txt.match(/name="app-version" content="([^"]+)"/) || txt.match(/const APP_VERSION = "([^"]+)"/);
     if (m && m[1] !== APP_VERSION) {
       updShown = true;
       const bar = document.createElement("div"); bar.id = "updBar";
